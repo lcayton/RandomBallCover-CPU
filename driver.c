@@ -62,7 +62,7 @@ int main(int argc, char**argv){
 
   if(runBrute){
     gettimeofday(&tvB,NULL);
-    brutePar2(x,q,NNsPar,dToNNs);
+    brutePar(x,q,NNsPar,dToNNs);
     gettimeofday(&tvE,NULL);
     double bruteTime = timeDiff(tvB,tvE);
     writeDoubs(1,outFile,bruteTime);
@@ -78,7 +78,7 @@ int main(int argc, char**argv){
   //printf("exact build time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
 
   gettimeofday(&tvB,NULL);
-  searchExact4(q, x, rE, riE, NNs);
+  searchExactManyCores(q, x, rE, riE, NNs);
   gettimeofday(&tvE,NULL);
   double searchTime =  timeDiff(tvB,tvE);
   //  printf("exact search3 time elapsed = %6.4f \n", timeDiff(tvB,tvE) );

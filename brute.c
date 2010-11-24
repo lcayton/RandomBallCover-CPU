@@ -13,82 +13,14 @@
 #include<omp.h>
 #include<gsl/gsl_sort.h>
 
-void brute(matrix X, matrix Q, unint *NNs, real *dToNNs){
-  real temp;
-  unint i, j;
-
-  for( i=0; i<Q.r; i++ ){
-    dToNNs[i] = MAX_REAL;
-    NNs[i] = 0;
-    for(j=0; j<X.r; j++ ){
-      temp = distVec( Q, X, i, j );
-      if( temp < dToNNs[i]){
-	NNs[i] = j;
-	dToNNs[i] = temp;
-      }
-    }
-  }
-}
-
-
-void bruteCache(matrix X, matrix Q, unint *NNs, real *dToNNs){
-  real temp[CL];
-
-  int i, j, k, t;
-  for( i=0; i<Q.pr/CL; i++ ){
-    t = i*CL;
-    for(j=0;j<CL;j++){
-      dToNNs[t+j] = MAX_REAL;
-      NNs[t+j] = 0;
-    }
-    for(j=0; j<X.r; j++ ){
-      for(k=0; k<CL; k++){
-	temp[k] = distVec( Q, X, t+k, j );
-      }
-      for(k=0; k<CL; k++){
-	if( temp[k] < dToNNs[t+k]){
-	  NNs[t+k] = j;
-	  dToNNs[t+k] = temp[k];
-	}
-      }
-    }
-  }
-}
-
 
 void brutePar(matrix X, matrix Q, unint *NNs, real *dToNNs){
-  real temp;
-
-  int i, j;
- 
-  
-#pragma omp parallel for private(j,temp)
-  for( i=0; i<Q.r; i++ ){
-    /* if(omp_get_thread_num()==0) */
-    /*   printf("i=%d thread=%d \n",i,omp_get_thread_num()); */
-    dToNNs[i] = MAX_REAL;
-    NNs[i] = 0;
-    for(j=0; j<X.r; j++ ){
-      temp = distVec( Q, X, i, j );
-      if( temp < dToNNs[i]){
-	NNs[i] = j;
-	dToNNs[i] = temp;
-      }
-    }
-  }
-}
-
-
-void brutePar2(matrix X, matrix Q, unint *NNs, real *dToNNs){
   real temp[CL];
-
   int i, j, k,t ;
   
 #pragma omp parallel for private(t,k,j,temp) 
   for( i=0; i<Q.pr/CL; i++ ){
     t = i*CL;
-    /* if(omp_get_thread_num()==0) */
-    /*   printf("i=%d thread=%d \n",i,omp_get_thread_num()); */
     for(j=0;j<CL;j++){
       dToNNs[t+j] = MAX_REAL;
       NNs[t+j] = 0;
@@ -98,35 +30,6 @@ void brutePar2(matrix X, matrix Q, unint *NNs, real *dToNNs){
 	temp[k] = distVec( Q, X, t+k, j );
       }
       for(k=0; k<CL; k++){
-	if( temp[k] < dToNNs[t+k]){
-	  NNs[t+k] = j;
-	  dToNNs[t+k] = temp[k];
-	}
-      }
-    }
-  }
-  
-}
-
-void brutePar3(matrix X, matrix Q, unint *NNs, real *dToNNs){
-  real temp[22];
-
-  int i, j, k,t ;
-  
-#pragma omp parallel for private(t,k,j,temp) 
-  for( i=0; i<Q.r/22; i++ ){
-    t = i*22;
-    /* if(omp_get_thread_num()==0) */
-    /*   printf("i=%d thread=%d \n",i,omp_get_thread_num()); */
-    for(j=0;j<22;j++){
-      dToNNs[t+j] = MAX_REAL;
-      NNs[t+j] = 0;
-    }
-    for(j=0; j<X.r; j++ ){
-      for(k=0; k<22; k++){
-	temp[k] = distVec( Q, X, t+k, j );
-      }
-      for(k=0; k<22; k++){
 	if( temp[k] < dToNNs[t+k]){
 	  NNs[t+k] = j;
 	  dToNNs[t+k] = temp[k];
@@ -138,36 +41,6 @@ void brutePar3(matrix X, matrix Q, unint *NNs, real *dToNNs){
 
 
 void bruteK(matrix x, matrix q, size_t **NNs, unint k){
-  int i, j;
-
-  float **d;
-  d = (float**)calloc(q.pr, sizeof(*d));
-  size_t **t;
-  t = (size_t**)calloc(q.pr, sizeof(*t));
-  for( i=0; i<q.pr; i++){
-    d[i] = (float*)calloc(x.pr, sizeof(**d));
-    t[i] = (size_t*)calloc(x.pr, sizeof(**t));
-  }
-
-#pragma omp parallel for private(j)
-  for( i=0; i<q.r; i++){
-    for( j=0; j<x.r; j++)
-      d[i][j] = distVec( q, x, i, j );
-    gsl_sort_float_index(t[i], d[i], 1, x.r);
-    for ( j=0; j<k; j++)
-      NNs[i][j]=t[i][j];
-  }
-
-  for( i=0; i<q.pr; i++){
-    free(t[i]);
-    free(d[i]);
-  }
-  free(t);
-  free(d);
-}
-
-//optimized version of bruteK
-void bruteK2(matrix x, matrix q, size_t **NNs, unint k){
   int i, j, l;
   int nt = omp_get_max_threads();
 
@@ -184,7 +57,6 @@ void bruteK2(matrix x, matrix q, size_t **NNs, unint k){
     }
   }
       
-
 #pragma omp parallel for private(j,l) shared(d,t,k)
   for( i=0; i<q.pr/CL; i++){
     int row = i*CL;
@@ -197,7 +69,7 @@ void bruteK2(matrix x, matrix q, size_t **NNs, unint k){
     }
     for(l=0; l<CL; l++)
       gsl_sort_float_smallest_index(t[tn][l], k, d[tn][l], 1, x.r);
-      //gsl_sort_float_index(t[tn][l], d[tn][l], 1, x.r);
+    
     for(l=0; l<CL; l++){
       for(j=0; j<k; j++){
 	NNs[row+l][j] = t[tn][l][j];
@@ -247,63 +119,7 @@ void bruteKDists(matrix x, matrix q, size_t **NNs, real **D, unint k){
 }
 
 
-//This is a very crude implementation without any reordering of q
 void bruteMap(matrix X, matrix Q, rep *ri, unint* qMap, unint *NNs, real *dToNNs){
-  real temp;
-  unint i, j;
-  
-#pragma omp parallel for private(j,temp)
-  for( i=0; i<Q.r; i++ ){
-    dToNNs[i] = MAX_REAL;
-    NNs[i] = 0;
-    rep rt = ri[qMap[i]];
-    for(j=0; j<rt.len; j++ ){
-      temp = distVec( Q, X, i, rt.lr[j] );
-      if( temp < dToNNs[i]){
-	NNs[i] = rt.lr[j];
-	dToNNs[i] = temp;
-      }
-    }
-  }
-}
-
-
-//This is a still crude, but doesn't ignore the cache at least
-void bruteMap2(matrix X, matrix Q, rep *ri, unint* qMap, unint *NNs, real *dToNNs){
-  unint i, j, k;
-  
-#pragma omp parallel for private(j,k)
-  for( i=0; i<Q.pr/CL; i++ ){
-    unint row = i*CL;
-    for(j=0; j<CL; j++){
-      dToNNs[row+j] = MAX_REAL;
-      NNs[row+j] = 0;
-    }
-    
-    real temp;
-    rep rt[CL];
-    unint maxLen = 0;
-    for(j=0; j<CL; j++){
-      rt[j] = ri[qMap[row+j]];
-      maxLen = MAX(maxLen, rt[j].len);
-    }  
-    
-    for(k=0; k<maxLen; k++ ){
-      for(j=0; j<CL; j++ ){
-	if( k<rt[j].len ){
-	  temp = distVec( Q, X, row+j, rt[j].lr[k] );
-	  if( temp < dToNNs[row+j]){
-	    NNs[row+j] = rt[j].lr[k];
-	    dToNNs[row+j] = temp;
-	  }
-	}
-      }
-    }
-  }
-}
-
-//Sorted version of bruteMap2
-void bruteMapSort(matrix X, matrix Q, rep *ri, unint* qMap, unint *NNs, real *dToNNs){
   unint i, j, k;
   
   size_t *qSort = (size_t*)calloc(Q.pr, sizeof(*qSort));
@@ -376,29 +192,7 @@ void rangeCount2(matrix X, matrix Q, real *ranges, unint *counts){
 }
 
 
-void bruteList(matrix X, matrix Q, rep *ri, intList *toSearch, unint *NNs, real *dToNNs){
-  real temp;
-  unint i, j, k;
-  
-#pragma omp parallel for private(j,k,temp)
-  for( i=0; i<Q.r; i++ ){
-    dToNNs[i] = MAX_REAL;
-    NNs[i] = 0;
-    for( j=0; j<toSearch[i].len; j++ ){
-      rep rt = ri[ toSearch[i].x[j] ];
-      for(k=0; k<rt.len; k++ ){
-	temp = distVec( Q, X, i, rt.lr[k] );
-	if( temp < dToNNs[i]){
-	  NNs[i] = rt.lr[k];
-	  dToNNs[i] = temp;
-	}
-      }
-    }
-  }
-}
-
-
-void bruteListRev(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, unint *NNs, real *dToNNs){
+void bruteList(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, unint *NNs, real *dToNNs){
   real temp;
   unint i, j, k, l;
   

@@ -25,8 +25,6 @@ typedef float real;
 //typedef double real;
 //#define MAX_REAL DBL_MAX
 
-//Percentage of device mem to use
-#define MEM_USABLE .95
 
 #define DUMMY_IDX UINT_MAX
 
