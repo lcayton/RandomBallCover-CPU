@@ -234,7 +234,7 @@ void evalApprox(matrix q, matrix x, unint *NNs){
   for(i=0; i<q.r; i++)
     ranges[i] = distVec(q,x,i,NNs[i]);
 
-  rangeCount2(x,q,ranges,counts);
+  rangeCount(x,q,ranges,counts);
 
   double avgCount = 0.0;
   for(i=0; i<q.r; i++)

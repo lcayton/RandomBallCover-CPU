@@ -1,4 +1,19 @@
 //This file collects versions of functions that are no longer used.
+void rangeCount(matrix,matrix,real*,unint*);
+void rangeCount(matrix X, matrix Q, real *ranges, unint *counts){
+  real temp;
+  unint i, j;
+
+#pragma omp parallel for private(j,temp)
+  for( i=0; i<Q.r; i++ ){
+    counts[i] = 0;
+    for(j=0; j<X.r; j++ ){
+      temp = distVec( Q, X, i, j );
+      counts[i] += ( temp < ranges[i] );
+    }
+  }
+}
+
 
 void bruteMap(matrix,matrix,rep*,unint*,unint*,real*);
 //This is a very crude implementation without any reordering of q

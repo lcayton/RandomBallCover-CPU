@@ -159,22 +159,6 @@ void bruteMap(matrix X, matrix Q, rep *ri, unint* qMap, unint *NNs, real *dToNNs
 
 void rangeCount(matrix X, matrix Q, real *ranges, unint *counts){
   real temp;
-  unint i, j;
-
-#pragma omp parallel for private(j,temp)
-  for( i=0; i<Q.r; i++ ){
-    counts[i] = 0;
-    for(j=0; j<X.r; j++ ){
-      temp = distVec( Q, X, i, j );
-      counts[i] += ( temp < ranges[i] );
-    }
-  }
-}
-
-
-//optimized vers
-void rangeCount2(matrix X, matrix Q, real *ranges, unint *counts){
-  real temp;
   unint i, j, k;
 
 #pragma omp parallel for private(j,k,temp) shared(counts,ranges)

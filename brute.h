@@ -14,5 +14,4 @@ void bruteKDists(matrix,matrix,size_t**,real**,unint);
 void bruteMap(matrix,matrix,rep*,unint*,unint*,real*);
 void bruteList(matrix,matrix,rep*,intList*,unint,unint*,real*);
 void rangeCount(matrix,matrix,real*,unint*);
-void rangeCount2(matrix,matrix,real*,unint*);
 #endif
