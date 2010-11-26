@@ -47,8 +47,6 @@ void bruteKHeap(matrix X, matrix Q, unint **NNs, real **dToNNs, unint K){
 #pragma omp parallel for private(t,k,j,temp) 
   for( i=0; i<Q.pr/CL; i++ ){
     t = i*CL;
-    real dTemp[CL];
-    real indTemp[CL];
     heap *hp = (heap*)calloc(CL, sizeof(*hp));
     heapEl newEl;
 

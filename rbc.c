@@ -82,6 +82,76 @@ void searchExact(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
 }
 
 
+void searchExactK(matrix q, matrix x, matrix r, rep *ri, unint *NNs, unint K){
+  unint i, j, k;
+  unint *repID = (unint*)calloc(q.pr, sizeof(*repID));
+  real *dToReps = (real*)calloc(q.pr, sizeof(*dToReps));
+  intList *toSearch = (intList*)calloc(r.pr, sizeof(*toSearch));
+  for(i=0;i<r.pr;i++)
+    createList(&toSearch[i]);
+  int nt = omp_get_max_threads();
+  
+  float ***d;  //d is indexed by: thread, cache line #, rep #
+  d = (float***)calloc(nt, sizeof(*d));
+  for(i=0; i<nt; i++){
+    d[i] = (float**)calloc(CL, sizeof(**d));
+    for(j=0; j<CL; j++){
+      d[i][j] = (float*)calloc(r.pr, sizeof(***d));
+    }
+  }
+  
+#pragma omp parallel for private(j,k)
+  for(i=0; i<q.pr/CL; i++){
+    unint row = i*CL;
+    unint tn = omp_get_thread_num();
+    
+    unint minID[CL];
+    real minDist[CL];
+    for(j=0;j<CL;j++)
+      minDist[j] = MAX_REAL;
+    
+    for( j=0; j<r.r; j++ ){
+      for(k=0; k<CL; k++){
+	d[tn][k][j] = distVec(q, r, row+k, j);
+	if(d[tn][k][j] < minDist[k]){
+	  minDist[k] = d[tn][k][j];
+	  minID[k] = j;
+	}
+      }
+    }
+    for(j=0; j<r.r; j++ ){
+      for(k=0; k<CL; k++ ){
+	real temp = d[tn][k][j];
+	if( row + k<q.r && minDist[k] >= temp - ri[j].radius && 3.0*minDist[k] >= temp ){
+#pragma omp critical
+	  {
+	    addToList(&toSearch[j], row+k);
+	  }
+	}
+      }
+    }
+  }
+  for(i=0; i<r.r; i++){
+    while(toSearch[i].len % CL != 0)
+      addToList(&toSearch[i],DUMMY_IDX);
+  }
+
+  bruteList(x,q,ri,toSearch,r.r,NNs,dToReps);
+
+  for(i=0;i<r.pr;i++)
+    destroyList(&toSearch[i]);
+  free(toSearch);
+  free(repID);
+  free(dToReps);
+  for(i=0; i<nt; i++){
+    for(j=0; j<CL; j++)
+      free(d[i][j]); 
+    free(d[i]);
+  }
+  free(d);
+}
+
+
 void searchExactManyCores(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
   unint i, j, k;
   unint *repID = (unint*)calloc(q.pr, sizeof(*repID));
