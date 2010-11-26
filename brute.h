@@ -10,6 +10,7 @@
 
 void brutePar(matrix,matrix,unint*,real*);
 void bruteK(matrix,matrix,size_t**,unint);
+void bruteKHeap(matrix, matrix,unint**,real**, unint);
 void bruteKDists(matrix,matrix,size_t**,real**,unint);
 void bruteMap(matrix,matrix,rep*,unint*,unint*,real*);
 void bruteList(matrix,matrix,rep*,intList*,unint,unint*,real*);

@@ -18,13 +18,13 @@
 // Format that the data is manipulated in:
 typedef float real;
 #define MAX_REAL FLT_MAX
+#define MIN_REAL (-1.0*FLT_MAX)
 
 // To switch to double precision, comment out the above 
 // 2 lines and uncomment the following two lines. 
 
 //typedef double real;
 //#define MAX_REAL DBL_MAX
-
 
 #define DUMMY_IDX UINT_MAX
 
@@ -41,7 +41,7 @@ typedef float real;
 #define DPAD(i) ( ((i)%VEC_LEN)==0 ? (i):((i)/VEC_LEN)*VEC_LEN ) 
 
 #define MAX(i,j) ((i) > (j) ? (i) : (j))
-
+#define MAXI(i,j,k,l) ((i) > (j) ? (k) : (l))
 #define MIN(i,j) ((i) < (j) ? (i) : (j))
 
 typedef unsigned int unint;
@@ -89,4 +89,14 @@ typedef struct { //very simple list data type
   unint len;
   unint maxLen;
 } intList;
+
+typedef struct { //array-based heap element
+  unint id;
+  real val;
+} heapEl; 
+
+typedef struct { //array-based heap
+  heapEl *h;
+  unint len;
+} heap;
 #endif

@@ -202,4 +202,79 @@ void printList(intList *l){
     printf("%d ",l->x[i]);
   printf("\n");
 }
+
+void createHeap(heap *hp, unint k){
+  int i;
+  hp->len = k;
+  hp->h = (heapEl*)calloc(k, sizeof(*hp->h));
+
+  heapEl t;
+  t.val = MAX_REAL;
+  t.id = DUMMY_IDX;
+  for(i=0;i<k;i++)
+    hp->h[i] = t;
+}
+
+void destroyHeap(heap *hp){
+  free(hp->h);
+}
+
+// This method replaces the top of the heap (ie the max-element)
+// with newEl, then re-orders the heap as necessary.  
+void replaceMax(heap *hp, heapEl newEl){
+  heapEl t;
+  hp->h[0] = newEl;
+  unint swapInd;
+  unint i = 0;
+  char done = 0;
+
+  while( 2*i+1 < hp->len && !done){
+    if( 2*i+2 < hp->len )
+      swapInd = MAXI(hp->h[2*i+1].val, hp->h[2*i+2].val, 2*i+1, 2*i+2);
+    else
+      swapInd = 2*i+1;
+    
+    if(hp->h[i].val < hp->h[swapInd].val){
+      t.id = hp->h[swapInd].id;
+      t.val = hp->h[swapInd].val;
+      hp->h[swapInd].id = hp->h[i].id;
+      hp->h[swapInd].val = hp->h[i].val;
+      hp->h[i].id = t.id;
+      hp->h[i].val = t.val;
+      i = swapInd;
+    }
+    else
+      done = 1;
+  }
+  
+}
+
+void heapSort(heap *hp, unint *sortInds, real *sortVals){
+  unint i,j, swapInd;
+  heapEl t;
+
+  for(i=0; i<hp->len; i++){
+    sortInds[hp->len-i-1] = hp->h[0].id;
+    sortVals[hp->len-i-1] = hp->h[0].val;
+    hp->h[0].id = DUMMY_IDX;
+    hp->h[0].val = MIN_REAL;
+
+    j=0;
+    while(2*j+1 < hp->len ){
+      if( 2*j+2 < hp->len )
+	swapInd = MAXI(hp->h[2*j+1].val, hp->h[2*j+2].val, 2*j+1, 2*j+2);
+      else
+	swapInd = 2*j+1;
+      if(hp->h[swapInd].id==DUMMY_IDX)
+	break;
+      t.id = hp->h[swapInd].id;
+      t.val = hp->h[swapInd].val;
+      hp->h[swapInd].id = hp->h[j].id;
+      hp->h[swapInd].val = hp->h[j].val;
+      hp->h[j].id = t.id;
+      hp->h[j].val = t.val;
+      j = swapInd;
+    }
+  }
+}
 #endif

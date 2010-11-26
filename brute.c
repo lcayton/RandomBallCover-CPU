@@ -40,6 +40,42 @@ void brutePar(matrix X, matrix Q, unint *NNs, real *dToNNs){
 }
 
 
+void bruteKHeap(matrix X, matrix Q, unint **NNs, real **dToNNs, unint K){
+  real temp[CL];
+  int i, j, k,t;
+  
+#pragma omp parallel for private(t,k,j,temp) 
+  for( i=0; i<Q.pr/CL; i++ ){
+    t = i*CL;
+    real dTemp[CL];
+    real indTemp[CL];
+    heap *hp = (heap*)calloc(CL, sizeof(*hp));
+    heapEl newEl;
+
+    for(j=0; j<CL; j++)
+      createHeap(&hp[j],K);
+
+    for(j=0; j<X.r; j++ ){
+      for(k=0; k<CL; k++)
+	temp[k] = distVec( Q, X, t+k, j );
+      
+      for(k=0; k<CL; k++){
+	if( temp[k] < hp[k].h[0].val ){
+	  newEl.id=j;
+	  newEl.val=temp[k];
+	  replaceMax( &hp[k], newEl);
+	}
+      }
+    }
+    for(j=0; j<CL; j++)
+      heapSort(&hp[j], NNs[t+j], dToNNs[t+j]);
+      
+    for(j=0; j<CL; j++)
+      destroyHeap(&hp[j]);
+  }
+}
+
+
 void bruteK(matrix x, matrix q, size_t **NNs, unint k){
   int i, j, l;
   int nt = omp_get_max_threads();

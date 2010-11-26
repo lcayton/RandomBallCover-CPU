@@ -26,4 +26,10 @@ void addToList(intList*,unint);
 void createList(intList*);
 void destroyList(intList*);
 void printList(intList*);
+
+void createHeap(heap*,unint);
+void destroyHeap(heap*);
+void replaceMax(heap*,heapEl);
+void heapSort(heap*,unint*,real*);
+
 #endif

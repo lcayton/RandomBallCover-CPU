@@ -21,7 +21,7 @@ void searchExact(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
     createList(&toSearch[i]);
   int nt = omp_get_max_threads();
   
-  float ***d;
+  float ***d;  //d is indexed by: thread, cache line #, rep #
   d = (float***)calloc(nt, sizeof(*d));
   for(i=0; i<nt; i++){
     d[i] = (float**)calloc(CL, sizeof(**d));

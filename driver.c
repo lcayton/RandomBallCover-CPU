@@ -30,6 +30,31 @@ int main(int argc, char**argv){
   printf("RANDOM BALL COVER -- CPU version\n");
   printf("********************************\n");
   
+  /* heap h; */
+  /* createHeap(&h,8); */
+  /* //  for(i=0;i<8;i++) */
+  /* //  printf("%6.2f ",h.h[i].val); */
+  /* heapEl t; */
+  /* gettimeofday(&tvB,NULL); */
+  /* srand(tvB.tv_usec); */
+  /* for(i=0;i<16;i++){ */
+  /*   t.val=((real)rand())/((real)RAND_MAX); */
+  /*   t.id=i; */
+  /*   replaceMax(&h,t); */
+  /* } */
+  /* for(i=0;i<8;i++) */
+  /*   printf("(%u, %6.2f) ",h.h[i].id, h.h[i].val); */
+  /* printf("\n"); */
+  /* unint *sortInds = (unint*)calloc(8, sizeof(*sortInds)); */
+  /* real *sortVals = (real*)calloc(8, sizeof(*sortVals)); */
+  /* heapSort(&h,sortInds,sortVals); */
+  /* for(i=0;i<8;i++) */
+  /*   printf("(%u, %6.4f) ", sortInds[i],sortVals[i]); */
+  /* printf("\n"); */
+
+  /* destroyHeap(&h); */
+  /* return; */
+
   parseInput(argc,argv);
 
   unint pm = CPAD(m);
@@ -40,6 +65,7 @@ int main(int argc, char**argv){
   /* x.mat = (real*)calloc( PAD(n)*PAD(d), sizeof(*(x.mat)) ); */
   /* q.mat = (real*)calloc( PAD(m)*PAD(d), sizeof(*(q.mat)) ); */
 
+  //alocates memory in an aligned way
   if( posix_memalign((void**)&x.mat,64,x.pr*x.pc*sizeof(*x.mat)) || 
       posix_memalign((void**)&q.mat,64,q.pr*q.pc*sizeof(*q.mat)) ){
     fprintf(stderr, "memory allocation failure .. exiting \n");
@@ -57,6 +83,29 @@ int main(int argc, char**argv){
   for(i=0;i<m;i++)
     NNs[i] = DUMMY_IDX;
   
+  size_t **nnk1;
+  unint **nnk2;
+  real **dk;
+  
+  nnk1 = (size_t**)calloc(pm, sizeof(*nnk1));
+  nnk2 = (unint**)calloc(pm, sizeof(*nnk2));
+  dk = (real**)calloc(pm, sizeof(*dk));
+  for(i=0; i<pm; i++){
+    nnk1[i] = (size_t*)calloc(32, sizeof(**nnk1));
+    nnk2[i] = (unint*)calloc(32, sizeof(**nnk2));
+    dk[i] = (real*)calloc(32, sizeof(**dk));
+  }
+
+  gettimeofday(&tvB,NULL);
+  bruteK(x,q,nnk1,32);
+  gettimeofday(&tvE,NULL);
+  printf("bruteK time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+
+  gettimeofday(&tvB,NULL);
+  bruteKHeap(x,q,nnk2,dk,32);
+  gettimeofday(&tvE,NULL);
+  printf("bruteKTemp time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+
   int threadMax = omp_get_max_threads();
   printf("number of threads = %d \n",threadMax);
 
@@ -65,28 +114,37 @@ int main(int argc, char**argv){
     brutePar(x,q,NNsPar,dToNNs);
     gettimeofday(&tvE,NULL);
     double bruteTime = timeDiff(tvB,tvE);
-    writeDoubs(1,outFile,bruteTime);
+    if(outFile)
+      writeDoubs(1,outFile,bruteTime);
   }
   
   matrix rE;
   rep *riE = (rep*)calloc( CPAD(numReps), sizeof(*riE) );
-  
+
   gettimeofday(&tvB,NULL);
   buildExact(x, &rE, riE, numReps);
   gettimeofday(&tvE,NULL);
   double buildTime =  timeDiff(tvB,tvE);
-  //printf("exact build time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+  printf("exact build time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
 
+  gettimeofday(&tvB,NULL);
+  searchExact(q, x, rE, riE, NNs);
+  gettimeofday(&tvE,NULL);
+  double searchTime =  timeDiff(tvB,tvE);
+  printf("searchExact time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+  
   gettimeofday(&tvB,NULL);
   searchExactManyCores(q, x, rE, riE, NNs);
   gettimeofday(&tvE,NULL);
-  double searchTime =  timeDiff(tvB,tvE);
-  //  printf("exact search3 time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+  searchTime =  timeDiff(tvB,tvE);
+  printf("searchExactManyCores time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+  
 
   double avgDists;
   searchStats(q,x,rE,riE,&avgDists);
 
-  writeDoubs(5,outFile,((double)rE.r),((double)D),buildTime,searchTime,avgDists);
+  if(outFile)
+    writeDoubs(5,outFile,((double)rE.r),((double)D),buildTime,searchTime,avgDists);
 
   free(rE.mat);
   for(i=0; i<rE.pr; i++)
@@ -142,7 +200,7 @@ void parseInput(int argc, char **argv){
     i++;
   }
 
-  if( !n || !m || !d || !numReps || !s || !dataFile || !outFile){
+  if( !n || !m || !d || !numReps || !s || !dataFile ){
     fprintf(stderr,"more arguments needed.. exiting\n");
     exit(1);
   }
