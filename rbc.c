@@ -218,6 +218,60 @@ void searchExactManyCores(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
 }
 
 
+// Exact k-NN search with the RBC.  This version works better on computers
+// with a high core count (say > 8)
+void searchExactManyCoresK(matrix q, matrix x, matrix r, rep *ri, unint **NNs, unint K){
+  unint i, j, k;
+  unint **repID = (unint**)calloc(q.pr, sizeof(*repID));
+  for(i=0; i<q.pr; i++)
+    repID[i] = (unint*)calloc(K, sizeof(**repID));
+  real **dToReps = (real**)calloc(q.pr, sizeof(*dToReps));
+  for(i=0; i<q.pr; i++)
+    dToReps[i] = (real*)calloc(K, sizeof(**dToReps));
+  intList *toSearch = (intList*)calloc(r.pr, sizeof(*toSearch));
+  for(i=0;i<r.pr;i++)
+    createList(&toSearch[i]);
+  
+  bruteKHeap(r,q,repID,dToReps,K);
+  
+#pragma omp parallel for private(j,k)
+  for(i=0; i<r.pr/CL; i++){
+    unint row = CL*i;
+    real temp[CL];
+    
+    for(j=0; j<q.r; j++ ){
+      for(k=0; k<CL; k++){
+	temp[k] = distVec( q, r, j, row+k );
+      }
+      for(k=0; k<CL; k++){
+	//dToRep[j] is current UB on dist to j's NN
+	//temp - ri[i].radius is LB to dist belonging to rep i
+	if( row+k<r.r && dToReps[j][K-1] >= temp[k] - ri[row+k].radius && 3.0*dToReps[j][K-1] >= temp[k] )
+	  addToList(&toSearch[row+k], j); //need to search rep 
+      }
+    }
+    for(j=0;j<CL;j++){
+      if(row+j<r.r){
+	while(toSearch[row+j].len % CL != 0)
+	  addToList(&toSearch[row+j],DUMMY_IDX);	
+      }
+    }
+  }
+
+  bruteListK(x,q,ri,toSearch,r.r,NNs,dToReps,K);
+  
+  for(i=0;i<q.pr;i++)
+    free(dToReps[i]);
+  free(dToReps);
+  for(i=0;i<r.pr;i++)
+    destroyList(&toSearch[i]);
+  free(toSearch);
+  for(i=0;i<q.pr;i++)
+    free(repID[i]);
+  free(repID);
+}
+
+
 //Builds the RBC for exact (1- or K-) NN search.
 void buildExact(matrix x, matrix *r, rep *ri, unint numReps){
   unint n = x.r;

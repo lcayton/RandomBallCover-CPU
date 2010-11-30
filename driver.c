@@ -83,15 +83,15 @@ int main(int argc, char**argv){
   for(i=0;i<m;i++)
     NNs[i] = DUMMY_IDX;
   
-  size_t **nnk1;
+  unint **nnk1;
   unint **nnk2;
   real **dk;
   
-  nnk1 = (size_t**)calloc(pm, sizeof(*nnk1));
+  nnk1 = (unint**)calloc(pm, sizeof(*nnk1));
   nnk2 = (unint**)calloc(pm, sizeof(*nnk2));
   dk = (real**)calloc(pm, sizeof(*dk));
   for(i=0; i<pm; i++){
-    nnk1[i] = (size_t*)calloc(10, sizeof(**nnk1));
+    nnk1[i] = (unint*)calloc(10, sizeof(**nnk1));
     nnk2[i] = (unint*)calloc(10, sizeof(**nnk2));
     dk[i] = (real*)calloc(10, sizeof(**dk));
   }
@@ -134,10 +134,10 @@ int main(int argc, char**argv){
   /* printf("searchExactManyCores time elapsed = %6.4f \n", timeDiff(tvB,tvE) ); */
   
   gettimeofday(&tvB,NULL);
-  searchExact(q, x, rE, riE, NNsPar);
+  searchExactManyCoresK(q, x, rE, riE, nnk1, 10);
   gettimeofday(&tvE,NULL);
   searchTime =  timeDiff(tvB,tvE);
-  printf("searchExact time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+  printf("searchExactManyCoresK time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
 
   gettimeofday(&tvB,NULL);
   searchExactK(q, x, rE, riE, nnk2, 10);
@@ -145,13 +145,13 @@ int main(int argc, char**argv){
   searchTime =  timeDiff(tvB,tvE);
   printf("searchExactK time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
 
-  /* for(i=0; i<m; i++){ */
-  /*   unint j; */
-  /*   for(j=0; j<10; j++){ */
-  /*     if(nnk1[i][j]!=nnk2[i][j] &&distVec(q,x,i,nnk1[i][j])!= distVec(q,x,i,nnk2[i][j])) */
-  /* 	printf("!! %d %d %6.5f %6.5f \n",nnk1[i][j],nnk2[i][j], distVec(q,x,i,nnk1[i][j]),distVec(q,x,i,nnk2[i][j])); */
-  /*   } */
-  /* } */
+  for(i=0; i<m; i++){
+    unint j;
+    for(j=0; j<10; j++){
+      if(nnk1[i][j]!=nnk2[i][j])// &&distVec(q,x,i,nnk1[i][j])!= distVec(q,x,i,nnk2[i][j]))
+  	printf("!! %d %d %6.5f %6.5f \n",nnk1[i][j],nnk2[i][j], distVec(q,x,i,nnk1[i][j]),distVec(q,x,i,nnk2[i][j]));
+    }
+  }
 
   double avgDists;
   searchStats(q,x,rE,riE,&avgDists);
