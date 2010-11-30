@@ -31,5 +31,5 @@ void createHeap(heap*,unint);
 void destroyHeap(heap*);
 void replaceMax(heap*,heapEl);
 void heapSort(heap*,unint*,real*);
-
+void reInitHeap(heap*);
 #endif

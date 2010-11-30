@@ -43,34 +43,48 @@ void brutePar(matrix X, matrix Q, unint *NNs, real *dToNNs){
 void bruteKHeap(matrix X, matrix Q, unint **NNs, real **dToNNs, unint K){
   real temp[CL];
   int i, j, k,t;
+
+  int nt = omp_get_max_threads();
+  heap **hp;
+  hp = (heap**)calloc(nt, sizeof(*hp));
+  for(i=0; i<nt; i++){
+    hp[i] = (heap*)calloc(CL, sizeof(**hp));
+    for(j=0; j<CL; j++)
+      createHeap(&hp[i][j],K);
+  }
   
 #pragma omp parallel for private(t,k,j,temp) 
   for( i=0; i<Q.pr/CL; i++ ){
     t = i*CL;
-    heap *hp = (heap*)calloc(CL, sizeof(*hp));
+    unint tn = omp_get_thread_num();
     heapEl newEl;
-
-    for(j=0; j<CL; j++)
-      createHeap(&hp[j],K);
 
     for(j=0; j<X.r; j++ ){
       for(k=0; k<CL; k++)
 	temp[k] = distVec( Q, X, t+k, j );
       
       for(k=0; k<CL; k++){
-	if( temp[k] < hp[k].h[0].val ){
+	if( temp[k] < hp[tn][k].h[0].val ){
 	  newEl.id=j;
 	  newEl.val=temp[k];
-	  replaceMax( &hp[k], newEl);
+	  replaceMax( &hp[tn][k], newEl);
 	}
       }
     }
     for(j=0; j<CL; j++)
-      heapSort(&hp[j], NNs[t+j], dToNNs[t+j]);
+      heapSort(&hp[tn][j], NNs[t+j], dToNNs[t+j]);
       
     for(j=0; j<CL; j++)
-      destroyHeap(&hp[j]);
+      reInitHeap(&hp[tn][j]);
   }
+  
+  for(i=0; i<nt; i++){
+    for(j=0; j<CL; j++)
+      destroyHeap(&hp[i][j]);
+    free(hp[i]);
+  }
+  free(hp);
+  
 }
 
 
@@ -255,4 +269,163 @@ void bruteList(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, un
   }
 }
 
+
+// Merges at the end, getting rid of the critical section
+void bruteList2(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, unint *NNs, real *dToNNs){
+  real temp;
+  unint i, j, k, l;
+  
+  unint nt = omp_get_max_threads();
+  unint m = Q.r;
+
+  real **d = calloc(nt, sizeof(*d));
+  unint **nn = calloc(nt, sizeof(*nn));
+  for(i=0; i<nt; i++){
+    d[i] = calloc(m, sizeof(**d));
+    nn[i] = calloc(m, sizeof(**nn));
+  }
+  
+  for(i=0; i<nt; i++){
+    for(j=0; j<m; j++)
+      d[i][j] = MAX_REAL;
+  }
+  for(i=0; i<m; i++)
+    dToNNs[i] = MAX_REAL;
+
+#pragma omp parallel for private(j,k,l,temp)
+  for( i=0; i<numReps; i++ ){
+    unint tn = omp_get_thread_num();
+
+    for( j=0; j< toSearch[i].len/CL; j++){  //toSearch is assumed to be padded
+      unint row = j*CL;
+      unint qInd[CL];
+      for(k=0; k<CL; k++)
+	qInd[k] = toSearch[i].x[row+k];
+      rep rt = ri[i];
+      unint curMinInd[CL];
+      real curMinDist[CL];
+      for(k=0; k<CL; k++)
+	curMinDist[k] = MAX_REAL;
+      for(k=0; k<rt.len; k++){
+	for(l=0; l<CL; l++ ){
+	  if(qInd[l]!=DUMMY_IDX){
+	    temp = distVec( Q, X, qInd[l], rt.lr[k] );
+	    if( temp < curMinDist[l] ){
+	      curMinInd[l] = rt.lr[k];
+	      curMinDist[l] = temp;
+	    }
+	  }
+	}
+      }
+      for(k=0; k<CL; k++){
+	if(qInd[k]!=DUMMY_IDX && curMinDist[k] < d[tn][qInd[k]]){
+	  nn[tn][qInd[k]] = curMinInd[k];
+	  d[tn][qInd[k]] = curMinDist[k];
+	}
+      }
+    }
+  }
+
+  // Make this a parallel reduce
+  for( i=0; i<nt; i++){
+    for( j=0; j<m; j++){
+      if( d[i][j] < dToNNs[j] ){
+	dToNNs[j] = d[i][j];
+	NNs[j] = nn[i][j];
+      }
+    }
+  }
+}
+
+
+// Merges at the end, getting rid of the critical section
+void bruteListK(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, unint **NNs, real **dToNNs, unint K){
+  real temp;
+  unint i, j, k, l;
+  
+  unint nt = omp_get_max_threads();
+  unint m = Q.r;
+
+  heap **hp;
+  hp = (heap**)calloc(nt, sizeof(*hp));
+  for(i=0; i<nt; i++){
+    hp[i] = (heap*)calloc(m, sizeof(**hp));
+    for(j=0; j<m; j++)
+      createHeap(&hp[i][j],K);
+  }      
+  
+#pragma omp parallel for private(j,k,l,temp)
+  for( i=0; i<numReps; i++ ){
+    unint tn = omp_get_thread_num();
+    heapEl newEl;
+    //printf("%u %u \n",i,toSearch[i].len);
+    for( j=0; j< toSearch[i].len/CL; j++){  //toSearch is assumed to be padded
+      unint row = j*CL;
+      unint qInd[CL];
+      for(k=0; k<CL; k++)
+	qInd[k] = toSearch[i].x[row+k];
+      rep rt = ri[i];
+      for(k=0; k<rt.len; k++){
+	for(l=0; l<CL; l++ ){
+	  if(qInd[l]!=DUMMY_IDX){
+	    temp = distVec( Q, X, qInd[l], rt.lr[k] );
+	    if( temp < hp[tn][qInd[l]].h[0].val ){
+	      newEl.id = rt.lr[k];
+	      newEl.val = temp;
+	      replaceMax( &hp[tn][qInd[l]], newEl );
+	    }
+	  }
+	}
+      }
+    }
+  }
+
+  unint **tInds;
+  real **tVals;
+  tInds = (unint**)calloc(nt, sizeof(*tInds));
+  tVals = (real**)calloc(nt, sizeof(*tVals));
+  for( i=0; i<nt; i++ ){
+    tInds[i] = (unint*)calloc(K, sizeof(**tInds) );
+    tVals[i] = (real*)calloc(K, sizeof(**tVals) );
+  }
+  
+  size_t *indVec = (size_t*)calloc(nt*K, sizeof(*indVec));
+  size_t *tempInds = (size_t*)calloc(nt*K, sizeof(*indVec));
+  real *valVec = (real*)calloc(nt*K, sizeof(*valVec));
+
+  // Make this a parallel reduce
+  for( i=0; i<m; i++){
+    for( j=0; j<nt; j++){
+      heapSort( &hp[j][i], tInds[j], tVals[j] );
+      for( k=0; k<K; k++){
+	indVec[j*K + k] = tInds[j][k];
+	valVec[j*K + k] = tVals[j][k];
+	/* if(tInds[j][k]!=DUMMY_IDX) */
+	/*   printf("%u %6.2f ",tInds[j][k],tVals[j][k]); */
+      }
+    }      
+    gsl_sort_float_index(tempInds, valVec, 1, nt*K);
+    for( j=0; j<K; j++ ){
+      dToNNs[i][j] = valVec[tempInds[j]];
+      NNs[i][j] = indVec[tempInds[j]];
+    }
+  }
+
+
+  free(tempInds);
+  free(indVec);
+  free(valVec);
+  for( i=0; i<nt; i++ ){
+    free(tInds[i]);
+    free(tVals[i]);
+  }
+  free(tInds); 
+  free(tVals);
+  for(i=0; i<nt; i++){
+    for(j=0; j<m; j++)
+      destroyHeap(&hp[i][j]);
+    free(hp[i]);
+  }
+  free(hp);
+}
 #endif

@@ -219,6 +219,16 @@ void destroyHeap(heap *hp){
   free(hp->h);
 }
 
+void reInitHeap(heap *hp){
+  int i;
+
+  heapEl t;
+  t.val = MAX_REAL;
+  t.id = DUMMY_IDX;
+  for(i=0;i<hp->len;i++)
+    hp->h[i] = t;
+}
+
 // This method replaces the top of the heap (ie the max-element)
 // with newEl, then re-orders the heap as necessary.  
 void replaceMax(heap *hp, heapEl newEl){
@@ -246,7 +256,6 @@ void replaceMax(heap *hp, heapEl newEl){
     else
       done = 1;
   }
-  
 }
 
 void heapSort(heap *hp, unint *sortInds, real *sortVals){
@@ -277,4 +286,10 @@ void heapSort(heap *hp, unint *sortInds, real *sortVals){
     }
   }
 }
+
+void mergeLists(unint **inds, real **vals, unint *iOut, real *vOut, unint k, unint numLists){
+  unint i,j;
+
+}
+
 #endif

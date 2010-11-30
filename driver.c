@@ -101,10 +101,10 @@ int main(int argc, char**argv){
   gettimeofday(&tvE,NULL);
   printf("bruteK time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
 
-  gettimeofday(&tvB,NULL);
-  bruteKHeap(x,q,nnk2,dk,32);
-  gettimeofday(&tvE,NULL);
-  printf("bruteKTemp time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+  /* gettimeofday(&tvB,NULL); */
+  /* bruteKHeap(x,q,nnk2,dk,32); */
+  /* gettimeofday(&tvE,NULL); */
+  /* printf("bruteKTemp time elapsed = %6.4f \n", timeDiff(tvB,tvE) ); */
 
   int threadMax = omp_get_max_threads();
   printf("number of threads = %d \n",threadMax);
@@ -127,18 +127,31 @@ int main(int argc, char**argv){
   double buildTime =  timeDiff(tvB,tvE);
   printf("exact build time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
 
-  gettimeofday(&tvB,NULL);
-  searchExact(q, x, rE, riE, NNs);
-  gettimeofday(&tvE,NULL);
+  /* gettimeofday(&tvB,NULL); */
+  /* searchExactManyCores(q, x, rE, riE, NNs); */
+  /* gettimeofday(&tvE,NULL); */
   double searchTime =  timeDiff(tvB,tvE);
-  printf("searchExact time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+  /* printf("searchExactManyCores time elapsed = %6.4f \n", timeDiff(tvB,tvE) ); */
   
   gettimeofday(&tvB,NULL);
-  searchExactManyCores(q, x, rE, riE, NNs);
+  searchExact(q, x, rE, riE, NNsPar);
   gettimeofday(&tvE,NULL);
   searchTime =  timeDiff(tvB,tvE);
-  printf("searchExactManyCores time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
-  
+  printf("searchExact time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+
+  gettimeofday(&tvB,NULL);
+  searchExactK(q, x, rE, riE, nnk2, 32);
+  gettimeofday(&tvE,NULL);
+  searchTime =  timeDiff(tvB,tvE);
+  printf("searchExactK time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+
+  for(i=0; i<m; i++){
+    unint j;
+    for(j=0; j<32; j++){
+      if(nnk1[i][j]!=nnk2[i][j] &&distVec(q,x,i,nnk1[i][j])!= distVec(q,x,i,nnk2[i][j]))
+	printf("!! %d %d %6.5f %6.5f \n",nnk1[i][j],nnk2[i][j], distVec(q,x,i,nnk1[i][j]),distVec(q,x,i,nnk2[i][j]));
+    }
+  }
 
   double avgDists;
   searchStats(q,x,rE,riE,&avgDists);

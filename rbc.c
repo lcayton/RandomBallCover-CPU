@@ -82,15 +82,17 @@ void searchExact(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
 }
 
 
-void searchExactK(matrix q, matrix x, matrix r, rep *ri, unint *NNs, unint K){
+void searchExactK(matrix q, matrix x, matrix r, rep *ri, unint **NNs, unint K){
   unint i, j, k;
   unint *repID = (unint*)calloc(q.pr, sizeof(*repID));
-  real *dToReps = (real*)calloc(q.pr, sizeof(*dToReps));
+  real **dToReps = (real**)calloc(q.pr, sizeof(*dToReps));
+  for(i=0; i<q.pr; i++)
+    dToReps[i] = (real*)calloc(K, sizeof(**dToReps));
   intList *toSearch = (intList*)calloc(r.pr, sizeof(*toSearch));
   for(i=0;i<r.pr;i++)
     createList(&toSearch[i]);
   int nt = omp_get_max_threads();
-  
+
   float ***d;  //d is indexed by: thread, cache line #, rep #
   d = (float***)calloc(nt, sizeof(*d));
   for(i=0; i<nt; i++){
@@ -100,27 +102,41 @@ void searchExactK(matrix q, matrix x, matrix r, rep *ri, unint *NNs, unint K){
     }
   }
   
+  heap **hp;
+  hp = (heap**)calloc(nt, sizeof(*hp));
+  for(i=0; i<nt; i++){
+    hp[i] = (heap*)calloc(CL, sizeof(**hp));
+    for(j=0; j<CL; j++)
+      createHeap(&hp[i][j],K);
+  }
+  
 #pragma omp parallel for private(j,k)
   for(i=0; i<q.pr/CL; i++){
     unint row = i*CL;
     unint tn = omp_get_thread_num();
-    
+    heapEl newEl; 
     unint minID[CL];
     real minDist[CL];
-    for(j=0;j<CL;j++)
-      minDist[j] = MAX_REAL;
+
+    /* for(j=0;j<CL;j++) */
+    /*   minDist[j] = MAX_REAL; */
     
     for( j=0; j<r.r; j++ ){
       for(k=0; k<CL; k++){
 	d[tn][k][j] = distVec(q, r, row+k, j);
-	if(d[tn][k][j] < minDist[k]){
-	  minDist[k] = d[tn][k][j];
-	  minID[k] = j;
+	if( d[tn][k][j] < hp[tn][k].h[0].val ){
+	  newEl.id = j;
+	  newEl.val = d[tn][k][j];
+	  replaceMax( &hp[tn][k], newEl );
+	  /* minDist[k] = d[tn][k][j]; */
+	  /* minID[k] = j; */
 	}
       }
     }
     for(j=0; j<r.r; j++ ){
       for(k=0; k<CL; k++ ){
+	/* real temp = hp[tn][k].h[0].val; */
+	minDist[k] = hp[tn][k].h[0].val;
 	real temp = d[tn][k][j];
 	if( row + k<q.r && minDist[k] >= temp - ri[j].radius && 3.0*minDist[k] >= temp ){
 #pragma omp critical
@@ -130,18 +146,30 @@ void searchExactK(matrix q, matrix x, matrix r, rep *ri, unint *NNs, unint K){
 	}
       }
     }
+    for(j=0; j<CL; j++)
+      reInitHeap(&hp[tn][j]);
   }
+
   for(i=0; i<r.r; i++){
     while(toSearch[i].len % CL != 0)
       addToList(&toSearch[i],DUMMY_IDX);
   }
 
-  bruteList(x,q,ri,toSearch,r.r,NNs,dToReps);
+  bruteListK(x,q,ri,toSearch,r.r,NNs,dToReps,K);
+
+  for(i=0; i<nt; i++){
+    for(j=0; j<CL; j++)
+      destroyHeap(&hp[i][j]);
+    free(hp[i]);
+  }
+  free(hp);
 
   for(i=0;i<r.pr;i++)
     destroyList(&toSearch[i]);
   free(toSearch);
   free(repID);
+  for(i=0;i<q.pr; i++)
+    free(dToReps[i]);
   free(dToReps);
   for(i=0; i<nt; i++){
     for(j=0; j<CL; j++)
