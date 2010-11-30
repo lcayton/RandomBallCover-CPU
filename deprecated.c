@@ -1,4 +1,84 @@
 //This file collects versions of functions that are no longer used.
+
+void bruteList(matrix,matrix,rep*,intList*,unint,unint*,real*);
+void bruteList(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, unint *NNs, real *dToNNs){
+  real temp;
+  unint i, j, k, l;
+  
+  for(i=0; i<Q.r; i++){
+    dToNNs[i] = MAX_REAL;
+    NNs[i] = 0;
+  }
+
+#pragma omp parallel for private(j,k,l,temp)
+  for( i=0; i<numReps; i++ ){
+    for( j=0; j< toSearch[i].len/CL; j++){  //toSearch is assumed to be padded
+      unint row = j*CL;
+      unint qInd[CL];
+      for(k=0; k<CL; k++)
+	qInd[k] = toSearch[i].x[row+k];
+      rep rt = ri[i];
+      unint curMinInd[CL];
+      real curMinDist[CL];
+      for(k=0; k<CL; k++)
+	curMinDist[k] = MAX_REAL;
+      for(k=0; k<rt.len; k++){
+	for(l=0; l<CL; l++ ){
+	  if(qInd[l]!=DUMMY_IDX){
+	    temp = distVec( Q, X, qInd[l], rt.lr[k] );
+	    if( temp < curMinDist[l] ){
+	      curMinInd[l] = rt.lr[k];
+	      curMinDist[l] = temp;
+	    }
+	  }
+	}
+      }
+#pragma omp critical
+      {
+	for(k=0; k<CL; k++){
+	  if( qInd[k]!=DUMMY_IDX && curMinDist[k] < dToNNs[qInd[k]]){
+	    NNs[qInd[k]] = curMinInd[k];
+	    dToNNs[qInd[k]] = curMinDist[k];
+	  }
+	}
+      }
+    }
+  }
+}
+
+
+void bruteKDists(matrix,matrix,size_t**,real**,unint);
+void bruteKDists(matrix x, matrix q, size_t **NNs, real **D, unint k){
+  int i, j;
+
+  float **d;
+  d = (float**)calloc(q.pr, sizeof(*d));
+  size_t **t;
+  t = (size_t**)calloc(q.pr, sizeof(*t));
+  for( i=0; i<q.pr; i++){
+    d[i] = (float*)calloc(x.pr, sizeof(**d));
+    t[i] = (size_t*)calloc(x.pr, sizeof(**t));
+  }
+
+#pragma omp parallel for private(j)
+  for( i=0; i<q.r; i++){
+    for( j=0; j<x.r; j++)
+      d[i][j] = distVec( q, x, i, j );
+    gsl_sort_float_index(t[i], d[i], 1, x.r);
+    for ( j=0; j<k; j++){
+      NNs[i][j]=t[i][j];
+      D[i][j]=d[i][t[i][j]];
+    }
+  }
+
+  for( i=0; i<q.pr; i++){
+    free(t[i]);
+    free(d[i]);
+  }
+  free(t);
+  free(d);
+}
+
 void rangeCount(matrix,matrix,real*,unint*);
 void rangeCount(matrix X, matrix Q, real *ranges, unint *counts){
   real temp;

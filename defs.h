@@ -6,14 +6,24 @@
 #include<math.h>
 
 #define FLOAT_TOL 1e-7
-#define VEC_LEN 4 //for SSE instructions
-#define CL 16 //related in some vague way to cache line size
+#define VEC_LEN 4 
+// The width of the vector (sse) instructions.  Change to 2 
+// if you wish to work in double precision.
+
+#define CL 16 
+// CL is for Cache Line.  This number is not actually 
+// the cache line size, but is used to make the loops more cache-efficient
+// in a simple way.
+
 #define DEF_LIST_SIZE 1024
 
-//The distance measure that is used.  This macro returns the 
-//distance for a single coordinate.
+// The following macros define the distance measure.
 #define DIST(i,j) ( fabs((i)-(j)) )  // L_1
+//This macro returns the distance for a single coordinate.
+
 #define DIST_EXP(x) ( (x) ); //L_1
+//This macro defines the exponent applied to the summed DIST values.
+
 //#define DIST(i,j) ( ( (i)-(j) )*( (i)-(j) ) )  // L_2
 //#define DIST_EXP(x) ( sqrt(x) ); //L_2
 
@@ -23,28 +33,34 @@ typedef float real;
 #define MIN_REAL (-1.0*FLT_MAX)
 
 // To switch to double precision, comment out the above 
-// 2 lines and uncomment the following two lines. 
+// three lines and uncomment the following three lines.   
+// You should also change the vector length to 2.
 
 //typedef double real;
 //#define MAX_REAL DBL_MAX
+//#define MIN_REAL (-1.0*DBL_MAX)
 
 #define DUMMY_IDX UINT_MAX
 
-//Row major indexing
 #define IDX(i,j,ld) (((i)*(ld))+(j))
+//Row major indexing
 
-//increase an int to the next multiple of VEC_LEN
 #define PAD(i) ( ((i)%VEC_LEN)==0 ? (i):((i)/VEC_LEN)*VEC_LEN+VEC_LEN ) 
+//increases an int to the next multiple of VEC_LEN
 
-//ditto but for CL
 #define CPAD(i) ( ((i)%CL)==0 ? (i):((i)/CL)*CL+CL )
+//ditto but for CL
 
-//decrease an int to the next multiple of VEC_LEN
 #define DPAD(i) ( ((i)%VEC_LEN)==0 ? (i):((i)/VEC_LEN)*VEC_LEN ) 
+//decreases an int to the next multiple of VEC_LEN
 
 #define MAX(i,j) ((i) > (j) ? (i) : (j))
-#define MAXI(i,j,k,l) ((i) > (j) ? (k) : (l))
 #define MIN(i,j) ((i) < (j) ? (i) : (j))
+
+#define MAXI(i,j,k,l) ((i) > (j) ? (k) : (l))
+//the same as max, but takes in index arguments (k,l) and returns
+//the index of the max instead of the max.
+
 
 typedef unsigned int unint;
 

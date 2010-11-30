@@ -14,6 +14,7 @@
 #include<gsl/gsl_sort.h>
 
 
+// A basic (parallel) implementation of brute force 1-NN
 void brutePar(matrix X, matrix Q, unint *NNs, real *dToNNs){
   real temp[CL];
   int i, j, k,t ;
@@ -40,54 +41,8 @@ void brutePar(matrix X, matrix Q, unint *NNs, real *dToNNs){
 }
 
 
-void bruteKHeap(matrix X, matrix Q, unint **NNs, real **dToNNs, unint K){
-  real temp[CL];
-  int i, j, k,t;
-
-  int nt = omp_get_max_threads();
-  heap **hp;
-  hp = (heap**)calloc(nt, sizeof(*hp));
-  for(i=0; i<nt; i++){
-    hp[i] = (heap*)calloc(CL, sizeof(**hp));
-    for(j=0; j<CL; j++)
-      createHeap(&hp[i][j],K);
-  }
-  
-#pragma omp parallel for private(t,k,j,temp) 
-  for( i=0; i<Q.pr/CL; i++ ){
-    t = i*CL;
-    unint tn = omp_get_thread_num();
-    heapEl newEl;
-
-    for(j=0; j<X.r; j++ ){
-      for(k=0; k<CL; k++)
-	temp[k] = distVec( Q, X, t+k, j );
-      
-      for(k=0; k<CL; k++){
-	if( temp[k] < hp[tn][k].h[0].val ){
-	  newEl.id=j;
-	  newEl.val=temp[k];
-	  replaceMax( &hp[tn][k], newEl);
-	}
-      }
-    }
-    for(j=0; j<CL; j++)
-      heapSort(&hp[tn][j], NNs[t+j], dToNNs[t+j]);
-      
-    for(j=0; j<CL; j++)
-      reInitHeap(&hp[tn][j]);
-  }
-  
-  for(i=0; i<nt; i++){
-    for(j=0; j<CL; j++)
-      destroyHeap(&hp[i][j]);
-    free(hp[i]);
-  }
-  free(hp);
-  
-}
-
-
+// A basic implementation of brute force k-NN search.  This does not
+// use a heap.  Instead it computes all distances and then sorts.
 void bruteK(matrix x, matrix q, size_t **NNs, unint k){
   int i, j, l;
   int nt = omp_get_max_threads();
@@ -135,50 +90,90 @@ void bruteK(matrix x, matrix q, size_t **NNs, unint k){
 }
 
 
-void bruteKDists(matrix x, matrix q, size_t **NNs, real **D, unint k){
-  int i, j;
+// An implementation of brute k-NN search that uses a heap.
+void bruteKHeap(matrix X, matrix Q, unint **NNs, real **dToNNs, unint K){
+  real temp[CL];
+  int i, j, k,t;
 
-  float **d;
-  d = (float**)calloc(q.pr, sizeof(*d));
-  size_t **t;
-  t = (size_t**)calloc(q.pr, sizeof(*t));
-  for( i=0; i<q.pr; i++){
-    d[i] = (float*)calloc(x.pr, sizeof(**d));
-    t[i] = (size_t*)calloc(x.pr, sizeof(**t));
+  int nt = omp_get_max_threads();
+  heap **hp;
+  hp = (heap**)calloc(nt, sizeof(*hp));
+  for(i=0; i<nt; i++){
+    hp[i] = (heap*)calloc(CL, sizeof(**hp));
+    for(j=0; j<CL; j++)
+      createHeap(&hp[i][j],K);
   }
+  
+#pragma omp parallel for private(t,k,j,temp) 
+  for( i=0; i<Q.pr/CL; i++ ){
+    t = i*CL;
+    unint tn = omp_get_thread_num();
+    heapEl newEl;
 
-#pragma omp parallel for private(j)
-  for( i=0; i<q.r; i++){
-    for( j=0; j<x.r; j++)
-      d[i][j] = distVec( q, x, i, j );
-    gsl_sort_float_index(t[i], d[i], 1, x.r);
-    for ( j=0; j<k; j++){
-      NNs[i][j]=t[i][j];
-      D[i][j]=d[i][t[i][j]];
+    for(j=0; j<X.r; j++ ){
+      for(k=0; k<CL; k++)
+	temp[k] = distVec( Q, X, t+k, j );
+      
+      for(k=0; k<CL; k++){
+	if( temp[k] < hp[tn][k].h[0].val ){
+	  newEl.id=j;
+	  newEl.val=temp[k];
+	  replaceMax( &hp[tn][k], newEl);
+	}
+      }
     }
+    for(j=0; j<CL; j++)
+      heapSort(&hp[tn][j], NNs[t+j], dToNNs[t+j]);
+      
+    for(j=0; j<CL; j++)
+      reInitHeap(&hp[tn][j]);
   }
-
-  for( i=0; i<q.pr; i++){
-    free(t[i]);
-    free(d[i]);
+  
+  for(i=0; i<nt; i++){
+    for(j=0; j<CL; j++)
+      destroyHeap(&hp[i][j]);
+    free(hp[i]);
   }
-  free(t);
-  free(d);
+  free(hp);
 }
 
 
+// Performs a range count using brute force.
+void rangeCount(matrix X, matrix Q, real *ranges, unint *counts){
+  real temp;
+  unint i, j, k;
+
+#pragma omp parallel for private(j,k,temp) shared(counts,ranges)
+  for( i=0; i<Q.pr/CL; i++ ){
+    unint row = i*CL;
+    for( j=0; j<CL; j++)
+      counts[row+j] = 0;
+    for(k=0; k<X.r; k++ ){
+      for( j=0; j<CL; j++){
+	temp = distVec( Q, X, row+j, k );
+	counts[row+j] += ( temp < ranges[row+j] );
+      }
+    }
+  }
+}
+
+
+// Performs a brute force NN search, but only between queries and points 
+// belonging to each query's nearest representative.  This method is used by
+// the One-shot algorithm.  
 void bruteMap(matrix X, matrix Q, rep *ri, unint* qMap, unint *NNs, real *dToNNs){
   unint i, j, k;
   
+  //Sort the queries, so that queries matched to a particular representative
+  //will be processed together, improving cache performance.
   size_t *qSort = (size_t*)calloc(Q.pr, sizeof(*qSort));
   gsl_sort_uint_index(qSort,qMap,1,Q.r);
 
-#pragma omp parallel for private(j,k)
+#pragma omp parallel for private(j,k) schedule(static)
   for( i=0; i<Q.pr/CL; i++ ){
     unint row = i*CL;
     for(j=0; j<CL; j++){
       dToNNs[qSort[row+j]] = MAX_REAL;
-      NNs[qSort[row+j]] = 0;
     }
     
     real temp;
@@ -205,73 +200,10 @@ void bruteMap(matrix X, matrix Q, rep *ri, unint* qMap, unint *NNs, real *dToNNs
 }
 
 
-void rangeCount(matrix X, matrix Q, real *ranges, unint *counts){
-  real temp;
-  unint i, j, k;
-
-#pragma omp parallel for private(j,k,temp) shared(counts,ranges)
-  for( i=0; i<Q.pr/CL; i++ ){
-    unint row = i*CL;
-    for( j=0; j<CL; j++)
-      counts[row+j] = 0;
-    for(k=0; k<X.r; k++ ){
-      for( j=0; j<CL; j++){
-	temp = distVec( Q, X, row+j, k );
-	counts[row+j] += ( temp < ranges[row+j] );
-      }
-    }
-  }
-}
-
-
+// Performs a brute force search between X and Q, but only compares distances
+// between (x,q) pairs specified by toSearch.  This is used by the searchExact
+// RBC method.
 void bruteList(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, unint *NNs, real *dToNNs){
-  real temp;
-  unint i, j, k, l;
-  
-  for(i=0; i<Q.r; i++){
-    dToNNs[i] = MAX_REAL;
-    NNs[i] = 0;
-  }
-
-#pragma omp parallel for private(j,k,l,temp)
-  for( i=0; i<numReps; i++ ){
-    for( j=0; j< toSearch[i].len/CL; j++){  //toSearch is assumed to be padded
-      unint row = j*CL;
-      unint qInd[CL];
-      for(k=0; k<CL; k++)
-	qInd[k] = toSearch[i].x[row+k];
-      rep rt = ri[i];
-      unint curMinInd[CL];
-      real curMinDist[CL];
-      for(k=0; k<CL; k++)
-	curMinDist[k] = MAX_REAL;
-      for(k=0; k<rt.len; k++){
-	for(l=0; l<CL; l++ ){
-	  if(qInd[l]!=DUMMY_IDX){
-	    temp = distVec( Q, X, qInd[l], rt.lr[k] );
-	    if( temp < curMinDist[l] ){
-	      curMinInd[l] = rt.lr[k];
-	      curMinDist[l] = temp;
-	    }
-	  }
-	}
-      }
-#pragma omp critical
-      {
-	for(k=0; k<CL; k++){
-	  if( qInd[k]!=DUMMY_IDX && curMinDist[k] < dToNNs[qInd[k]]){
-	    NNs[qInd[k]] = curMinInd[k];
-	    dToNNs[qInd[k]] = curMinDist[k];
-	  }
-	}
-      }
-    }
-  }
-}
-
-
-// Merges at the end, getting rid of the critical section
-void bruteList2(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, unint *NNs, real *dToNNs){
   real temp;
   unint i, j, k, l;
   
@@ -326,7 +258,7 @@ void bruteList2(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, u
     }
   }
 
-  // Make this a parallel reduce
+  // Could make this a parallel reduce, but seems memory-bound anyway.
   for( i=0; i<nt; i++){
     for( j=0; j<m; j++){
       if( d[i][j] < dToNNs[j] ){
@@ -338,7 +270,8 @@ void bruteList2(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, u
 }
 
 
-// Merges at the end, getting rid of the critical section
+// This method is the same as the above bruteList method, but for k-nn search.
+// It uses a heap.
 void bruteListK(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, unint **NNs, real **dToNNs, unint K){
   real temp;
   unint i, j, k, l;
@@ -358,7 +291,7 @@ void bruteListK(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, u
   for( i=0; i<numReps; i++ ){
     unint tn = omp_get_thread_num();
     heapEl newEl;
-    //printf("%u %u \n",i,toSearch[i].len);
+   
     for( j=0; j< toSearch[i].len/CL; j++){  //toSearch is assumed to be padded
       unint row = j*CL;
       unint qInd[CL];
@@ -379,7 +312,10 @@ void bruteListK(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, u
       }
     }
   }
-
+  
+  // Now merge the NNs found with each thread.  Currently this performs the
+  // merge within one thread, but should eventually be done in a proper
+  // parallel-reduce fashion.
   unint **tInds;
   real **tVals;
   tInds = (unint**)calloc(nt, sizeof(*tInds));
@@ -393,15 +329,12 @@ void bruteListK(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, u
   size_t *tempInds = (size_t*)calloc(nt*K, sizeof(*indVec));
   real *valVec = (real*)calloc(nt*K, sizeof(*valVec));
 
-  // Make this a parallel reduce
   for( i=0; i<m; i++){
     for( j=0; j<nt; j++){
       heapSort( &hp[j][i], tInds[j], tVals[j] );
       for( k=0; k<K; k++){
 	indVec[j*K + k] = tInds[j][k];
 	valVec[j*K + k] = tVals[j][k];
-	/* if(tInds[j][k]!=DUMMY_IDX) */
-	/*   printf("%u %6.2f ",tInds[j][k],tVals[j][k]); */
       }
     }      
     gsl_sort_float_index(tempInds, valVec, 1, nt*K);
@@ -410,7 +343,6 @@ void bruteListK(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, u
       NNs[i][j] = indVec[tempInds[j]];
     }
   }
-
 
   free(tempInds);
   free(indVec);

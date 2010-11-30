@@ -12,6 +12,7 @@
 #include<sys/time.h>
 #include<stdio.h>
 
+//Exact 1-NN search with the RBC.
 void searchExact(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
   unint i, j, k;
   unint *repID = (unint*)calloc(q.pr, sizeof(*repID));
@@ -81,7 +82,7 @@ void searchExact(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
   free(d);
 }
 
-
+//Exact k-NN search with the RBC
 void searchExactK(matrix q, matrix x, matrix r, rep *ri, unint **NNs, unint K){
   unint i, j, k;
   unint *repID = (unint*)calloc(q.pr, sizeof(*repID));
@@ -115,12 +116,7 @@ void searchExactK(matrix q, matrix x, matrix r, rep *ri, unint **NNs, unint K){
     unint row = i*CL;
     unint tn = omp_get_thread_num();
     heapEl newEl; 
-    unint minID[CL];
-    real minDist[CL];
 
-    /* for(j=0;j<CL;j++) */
-    /*   minDist[j] = MAX_REAL; */
-    
     for( j=0; j<r.r; j++ ){
       for(k=0; k<CL; k++){
 	d[tn][k][j] = distVec(q, r, row+k, j);
@@ -128,17 +124,14 @@ void searchExactK(matrix q, matrix x, matrix r, rep *ri, unint **NNs, unint K){
 	  newEl.id = j;
 	  newEl.val = d[tn][k][j];
 	  replaceMax( &hp[tn][k], newEl );
-	  /* minDist[k] = d[tn][k][j]; */
-	  /* minID[k] = j; */
 	}
       }
     }
     for(j=0; j<r.r; j++ ){
       for(k=0; k<CL; k++ ){
-	/* real temp = hp[tn][k].h[0].val; */
-	minDist[k] = hp[tn][k].h[0].val;
+	real minDist = hp[tn][k].h[0].val;
 	real temp = d[tn][k][j];
-	if( row + k<q.r && minDist[k] >= temp - ri[j].radius && 3.0*minDist[k] >= temp ){
+	if( row + k<q.r && minDist >= temp - ri[j].radius && 3.0*minDist >= temp ){
 #pragma omp critical
 	  {
 	    addToList(&toSearch[j], row+k);
@@ -157,13 +150,13 @@ void searchExactK(matrix q, matrix x, matrix r, rep *ri, unint **NNs, unint K){
 
   bruteListK(x,q,ri,toSearch,r.r,NNs,dToReps,K);
 
+  
   for(i=0; i<nt; i++){
     for(j=0; j<CL; j++)
       destroyHeap(&hp[i][j]);
     free(hp[i]);
   }
   free(hp);
-
   for(i=0;i<r.pr;i++)
     destroyList(&toSearch[i]);
   free(toSearch);
@@ -179,7 +172,8 @@ void searchExactK(matrix q, matrix x, matrix r, rep *ri, unint **NNs, unint K){
   free(d);
 }
 
-
+// Exact 1-NN search with the RBC.  This version works better on computers
+// with a high core count (say > 8)
 void searchExactManyCores(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
   unint i, j, k;
   unint *repID = (unint*)calloc(q.pr, sizeof(*repID));
@@ -224,7 +218,7 @@ void searchExactManyCores(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
 }
 
 
-
+//Builds the RBC for exact (1- or K-) NN search.
 void buildExact(matrix x, matrix *r, rep *ri, unint numReps){
   unint n = x.r;
   unint i,j ;
@@ -235,7 +229,6 @@ void buildExact(matrix x, matrix *r, rep *ri, unint numReps){
   //pick r random reps
   pickReps(x,r);
 
-  
   //Compute the rep for each x
   unint *repID = (unint*)calloc(x.pr, sizeof(*repID));
   real *dToReps = (real*)calloc(x.pr, sizeof(*dToReps));
@@ -267,6 +260,7 @@ void buildExact(matrix x, matrix *r, rep *ri, unint numReps){
 }
 
 
+//Builds the RBC for the One-shot (inexact) method.
 void buildOneShot(matrix x, matrix *r, rep *ri, unint numReps, unint s){
   unint n = x.r;
   unint ps = CPAD(s);
@@ -300,6 +294,7 @@ void buildOneShot(matrix x, matrix *r, rep *ri, unint numReps, unint s){
 }
 
 
+// Performs (approx) 1-NN search with the RBC algorithm.
 void searchOneShot(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
   int i;
   unint *repID = (unint*)calloc(q.pr, sizeof(*repID));
@@ -312,7 +307,7 @@ void searchOneShot(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
   free(dToReps);
 }
 
-
+// Chooses representatives at random from x.
 void pickReps(matrix x, matrix *r){
   unint n = x.r;
   unint i, j;
