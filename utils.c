@@ -159,7 +159,7 @@ real distVec(matrix x, matrix y, unint k, unint l){
   }
   for(i=0; i<VEC_LEN; i++)
     sum += ans[i];
-  return sum;
+  return DIST_EXP(sum);
 }
 
 

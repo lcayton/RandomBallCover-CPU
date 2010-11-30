@@ -91,18 +91,18 @@ int main(int argc, char**argv){
   nnk2 = (unint**)calloc(pm, sizeof(*nnk2));
   dk = (real**)calloc(pm, sizeof(*dk));
   for(i=0; i<pm; i++){
-    nnk1[i] = (size_t*)calloc(32, sizeof(**nnk1));
-    nnk2[i] = (unint*)calloc(32, sizeof(**nnk2));
-    dk[i] = (real*)calloc(32, sizeof(**dk));
+    nnk1[i] = (size_t*)calloc(10, sizeof(**nnk1));
+    nnk2[i] = (unint*)calloc(10, sizeof(**nnk2));
+    dk[i] = (real*)calloc(10, sizeof(**dk));
   }
 
-  gettimeofday(&tvB,NULL);
-  bruteK(x,q,nnk1,32);
-  gettimeofday(&tvE,NULL);
-  printf("bruteK time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+  /* gettimeofday(&tvB,NULL); */
+  /* bruteK(x,q,nnk1,10); */
+  /* gettimeofday(&tvE,NULL); */
+  /* printf("bruteK time elapsed = %6.4f \n", timeDiff(tvB,tvE) ); */
 
   /* gettimeofday(&tvB,NULL); */
-  /* bruteKHeap(x,q,nnk2,dk,32); */
+  /* bruteKHeap(x,q,nnk2,dk,10); */
   /* gettimeofday(&tvE,NULL); */
   /* printf("bruteKTemp time elapsed = %6.4f \n", timeDiff(tvB,tvE) ); */
 
@@ -140,18 +140,18 @@ int main(int argc, char**argv){
   printf("searchExact time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
 
   gettimeofday(&tvB,NULL);
-  searchExactK(q, x, rE, riE, nnk2, 32);
+  searchExactK(q, x, rE, riE, nnk2, 10);
   gettimeofday(&tvE,NULL);
   searchTime =  timeDiff(tvB,tvE);
   printf("searchExactK time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
 
-  for(i=0; i<m; i++){
-    unint j;
-    for(j=0; j<32; j++){
-      if(nnk1[i][j]!=nnk2[i][j] &&distVec(q,x,i,nnk1[i][j])!= distVec(q,x,i,nnk2[i][j]))
-	printf("!! %d %d %6.5f %6.5f \n",nnk1[i][j],nnk2[i][j], distVec(q,x,i,nnk1[i][j]),distVec(q,x,i,nnk2[i][j]));
-    }
-  }
+  /* for(i=0; i<m; i++){ */
+  /*   unint j; */
+  /*   for(j=0; j<10; j++){ */
+  /*     if(nnk1[i][j]!=nnk2[i][j] &&distVec(q,x,i,nnk1[i][j])!= distVec(q,x,i,nnk2[i][j])) */
+  /* 	printf("!! %d %d %6.5f %6.5f \n",nnk1[i][j],nnk2[i][j], distVec(q,x,i,nnk1[i][j]),distVec(q,x,i,nnk2[i][j])); */
+  /*   } */
+  /* } */
 
   double avgDists;
   searchStats(q,x,rE,riE,&avgDists);
