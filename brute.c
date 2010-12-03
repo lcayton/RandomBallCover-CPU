@@ -43,7 +43,7 @@ void brutePar(matrix X, matrix Q, unint *NNs, real *dToNNs){
 
 // A basic implementation of brute force k-NN search.  This does not
 // use a heap.  Instead it computes all distances and then sorts.
-void bruteK(matrix x, matrix q, size_t **NNs, unint k){
+void bruteK(matrix x, matrix q, unint **NNs, real **dToNNs, unint k){
   int i, j, l;
   int nt = omp_get_max_threads();
 
@@ -75,7 +75,8 @@ void bruteK(matrix x, matrix q, size_t **NNs, unint k){
     
     for(l=0; l<CL; l++){
       for(j=0; j<k; j++){
-	NNs[row+l][j] = t[tn][l][j];
+	NNs[row+l][j] = (unint)t[tn][l][j];
+	dToNNs[row+l][j] = d[tn][l][t[tn][l][j]];
       }
     }
   }

@@ -9,7 +9,7 @@
 #include "defs.h"
 
 void brutePar(matrix,matrix,unint*,real*);
-void bruteK(matrix,matrix,size_t**,unint);
+void bruteK(matrix,matrix,unint**,real**,unint);
 void bruteKHeap(matrix, matrix,unint**,real**, unint);
 void bruteMap(matrix,matrix,rep*,unint*,unint*,real*);
 void bruteListK(matrix,matrix,rep*,intList*,unint,unint**,real**,unint);

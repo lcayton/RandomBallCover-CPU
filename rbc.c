@@ -327,12 +327,15 @@ void buildOneShot(matrix x, matrix *r, rep *ri, unint numReps, unint s){
   pickReps(x,r); 
 
   //Compute the ownership lists
-  size_t **repID = (size_t**)calloc(r->pr, sizeof(*repID));
-  for( i=0; i<r->pr; i++)
-    repID[i] = (size_t*)calloc(CPAD(ps), sizeof(**repID));
+  unint **repID = (unint**)calloc(r->pr, sizeof(*repID));
+  real **dToNNs = (real**)calloc(r->pr, sizeof(*dToNNs));
+  for( i=0; i<r->pr; i++){
+    repID[i] = (unint*)calloc(CPAD(ps), sizeof(**repID));
+    dToNNs[i] = (real*)calloc(CPAD(ps), sizeof(**dToNNs));
+  }
 
   //need to find the radius such that each rep contains s points
-  bruteK(x,*r,repID,s);
+  bruteK(x,*r,repID,dToNNs,s);
   
   for( i=0; i<r->pr; i++){
     ri[i].lr = (unint*)calloc(ps, sizeof(*ri[i].lr));
@@ -342,8 +345,11 @@ void buildOneShot(matrix x, matrix *r, rep *ri, unint numReps, unint s){
     //    ri[i].radius = distVec( r, x, i, ri[i].lr[s-1]);  Not needed by one-shot alg
   }
   
-  for( i=0; i<r->pr; i++)
+  for( i=0; i<r->pr; i++){
+    free(dToNNs[i]);
     free(repID[i]);
+  }
+  free(dToNNs);
   free(repID);
 }
 
