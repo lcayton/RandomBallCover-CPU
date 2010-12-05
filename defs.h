@@ -19,11 +19,12 @@
 
 // The following macros define the distance measure.
 #define DIST(i,j) ( fabs((i)-(j)) )  // L_1
-//This macro returns the distance for a single coordinate.
+// This macro returns the distance for a single coordinate.
 
 #define DIST_EXP(x) ( (x) ); //L_1
-//This macro defines the exponent applied to the summed DIST values.
+// This macro defines the exponent applied to the summed DIST values.
 
+// L_2 versions of the above macros:
 //#define DIST(i,j) ( ( (i)-(j) )*( (i)-(j) ) )  // L_2
 //#define DIST_EXP(x) ( sqrt(x) ); //L_2
 
@@ -43,23 +44,23 @@ typedef float real;
 #define DUMMY_IDX UINT_MAX
 
 #define IDX(i,j,ld) (((i)*(ld))+(j))
-//Row major indexing
+// Row major indexing
 
 #define PAD(i) ( ((i)%VEC_LEN)==0 ? (i):((i)/VEC_LEN)*VEC_LEN+VEC_LEN ) 
-//increases an int to the next multiple of VEC_LEN
+// increases an int to the next multiple of VEC_LEN
 
 #define CPAD(i) ( ((i)%CL)==0 ? (i):((i)/CL)*CL+CL )
-//ditto but for CL
+// ditto but for CL
 
 #define DPAD(i) ( ((i)%VEC_LEN)==0 ? (i):((i)/VEC_LEN)*VEC_LEN ) 
-//decreases an int to the next multiple of VEC_LEN
+// decreases an int to the next multiple of VEC_LEN
 
 #define MAX(i,j) ((i) > (j) ? (i) : (j))
 #define MIN(i,j) ((i) < (j) ? (i) : (j))
 
 #define MAXI(i,j,k,l) ((i) > (j) ? (k) : (l))
-//the same as max, but takes in index arguments (k,l) and returns
-//the index of the max instead of the max.
+// the same as max, but takes in index arguments (k,l) and returns
+// the index of the max instead of the max.
 
 
 typedef unsigned int unint;
@@ -95,7 +96,7 @@ typedef struct {
 } intMatrix;
 
 
-typedef struct {
+typedef struct { // struct for a representative point
   unint* lr; //list of owned DB points
   unint len;  //length of lr
   real radius;

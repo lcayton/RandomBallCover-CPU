@@ -12,6 +12,48 @@
 #include<sys/time.h>
 #include<stdio.h>
 
+//Builds the RBC for exact (1- or K-) NN search.
+void buildExact(matrix x, matrix *r, rep *ri, unint numReps){
+  unint n = x.r;
+  unint i,j ;
+
+  r->c=x.c; r->pc=x.pc; r->r=numReps; r->pr=CPAD(numReps); r->ld=r->pc;
+  r->mat = (real*)calloc( r->pc*r->pr, sizeof(*r->mat) );
+ 
+  //pick r random reps
+  pickReps(x,r);
+
+  //Compute the rep for each x
+  unint *repID = (unint*)calloc(x.pr, sizeof(*repID));
+  real *dToReps = (real*)calloc(x.pr, sizeof(*dToReps));
+
+  brutePar(*r,x,repID,dToReps);
+
+  //gather the rep info & store it in struct
+  for(i=0; i<numReps; i++){
+    ri[i].len = 0;
+    ri[i].radius = 0;
+  }    
+  
+  for(i=0; i<n; i++){
+    ri[repID[i]].radius = MAX( dToReps[i], ri[repID[i]].radius );
+    ri[repID[i]].len++;
+  }
+  
+  for(i=0; i<numReps; i++){
+    ri[i].lr = (unint*)calloc(ri[i].len, sizeof(*ri[i].lr));
+  }
+  
+  unint *tempCount = (unint*)calloc(numReps, sizeof(*tempCount));
+  for(i=0; i<n; i++)
+    ri[repID[i]].lr[tempCount[repID[i]]++] = i;
+
+  free(tempCount);
+  free(dToReps);
+  free(repID);
+}
+
+
 //Exact 1-NN search with the RBC.
 void searchExact(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
   unint i, j, k;
@@ -81,6 +123,7 @@ void searchExact(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
   }
   free(d);
 }
+
 
 //Exact k-NN search with the RBC
 void searchExactK(matrix q, matrix x, matrix r, rep *ri, unint **NNs, unint K){
@@ -272,48 +315,6 @@ void searchExactManyCoresK(matrix q, matrix x, matrix r, rep *ri, unint **NNs, u
 }
 
 
-//Builds the RBC for exact (1- or K-) NN search.
-void buildExact(matrix x, matrix *r, rep *ri, unint numReps){
-  unint n = x.r;
-  unint i,j ;
-
-  r->c=x.c; r->pc=x.pc; r->r=numReps; r->pr=CPAD(numReps); r->ld=r->pc;
-  r->mat = (real*)calloc( r->pc*r->pr, sizeof(*r->mat) );
- 
-  //pick r random reps
-  pickReps(x,r);
-
-  //Compute the rep for each x
-  unint *repID = (unint*)calloc(x.pr, sizeof(*repID));
-  real *dToReps = (real*)calloc(x.pr, sizeof(*dToReps));
-
-  brutePar(*r,x,repID,dToReps);
-
-  //gather the rep info & store it in struct
-  for(i=0; i<numReps; i++){
-    ri[i].len = 0;
-    ri[i].radius = 0;
-  }    
-  
-  for(i=0; i<n; i++){
-    ri[repID[i]].radius = MAX( dToReps[i], ri[repID[i]].radius );
-    ri[repID[i]].len++;
-  }
-  
-  for(i=0; i<numReps; i++){
-    ri[i].lr = (unint*)calloc(ri[i].len, sizeof(*ri[i].lr));
-  }
-  
-  unint *tempCount = (unint*)calloc(numReps, sizeof(*tempCount));
-  for(i=0; i<n; i++)
-    ri[repID[i]].lr[tempCount[repID[i]]++] = i;
-
-  free(tempCount);
-  free(dToReps);
-  free(repID);
-}
-
-
 //Builds the RBC for the One-shot (inexact) method.
 void buildOneShot(matrix x, matrix *r, rep *ri, unint numReps, unint s){
   unint n = x.r;
@@ -354,20 +355,24 @@ void buildOneShot(matrix x, matrix *r, rep *ri, unint numReps, unint s){
 }
 
 
-// Performs (approx) 1-NN search with the RBC algorithm.
+// Performs (approx) 1-NN search with the RBC One-shot algorithm.
 void searchOneShot(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
   int i;
   unint *repID = (unint*)calloc(q.pr, sizeof(*repID));
   real *dToReps = (real*)calloc(q.pr, sizeof(*dToReps));
-
+  
+  // Determine which rep each query is closest to.
   brutePar(r,q,repID,dToReps);
+  
+  // Search that rep's ownership list.
   bruteMap(x,q,ri,repID,NNs,dToReps);
   
   free(repID);
   free(dToReps);
 }
 
-// Chooses representatives at random from x.
+
+// Chooses representatives at random from x and stores them in r.
 void pickReps(matrix x, matrix *r){
   unint n = x.r;
   unint i, j;
@@ -395,7 +400,9 @@ void pickReps(matrix x, matrix *r){
 }
 
 
-//Determines the total number of computations needed by RBC to find the the NNS.
+// Determines the total number of computations needed by RBC to 
+// find the the NNS.  This function is useful mainly for 
+// evaluating the effectiveness of the RBC.  
 void searchStats(matrix q, matrix x, matrix r, rep *ri, double *avgDists){
   unint i, j;
   unint *repID = (unint*)calloc(q.pr, sizeof(*repID));

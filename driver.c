@@ -91,18 +91,18 @@ int main(int argc, char**argv){
   nnk2 = (unint**)calloc(pm, sizeof(*nnk2));
   dk = (real**)calloc(pm, sizeof(*dk));
   for(i=0; i<pm; i++){
-    nnk1[i] = (unint*)calloc(10, sizeof(**nnk1));
-    nnk2[i] = (unint*)calloc(10, sizeof(**nnk2));
-    dk[i] = (real*)calloc(10, sizeof(**dk));
+    nnk1[i] = (unint*)calloc(1, sizeof(**nnk1));
+    nnk2[i] = (unint*)calloc(1, sizeof(**nnk2));
+    dk[i] = (real*)calloc(1, sizeof(**dk));
   }
 
   /* gettimeofday(&tvB,NULL); */
-  /* bruteK(x,q,nnk1,10); */
+  /* bruteK(x,q,nnk1,1); */
   /* gettimeofday(&tvE,NULL); */
   /* printf("bruteK time elapsed = %6.4f \n", timeDiff(tvB,tvE) ); */
 
   /* gettimeofday(&tvB,NULL); */
-  /* bruteKHeap(x,q,nnk2,dk,10); */
+  /* bruteKHeap(x,q,nnk2,dk,1); */
   /* gettimeofday(&tvE,NULL); */
   /* printf("bruteKTemp time elapsed = %6.4f \n", timeDiff(tvB,tvE) ); */
 
@@ -127,27 +127,33 @@ int main(int argc, char**argv){
   double buildTime =  timeDiff(tvB,tvE);
   printf("exact build time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
 
-  /* gettimeofday(&tvB,NULL); */
-  /* searchExactManyCores(q, x, rE, riE, NNs); */
-  /* gettimeofday(&tvE,NULL); */
+  gettimeofday(&tvB,NULL);
+  searchExactManyCores(q, x, rE, riE, NNs);
+  gettimeofday(&tvE,NULL);
   double searchTime =  timeDiff(tvB,tvE);
-  /* printf("searchExactManyCores time elapsed = %6.4f \n", timeDiff(tvB,tvE) ); */
+  printf("searchExactManyCores time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
   
   gettimeofday(&tvB,NULL);
-  searchExactManyCoresK(q, x, rE, riE, nnk1, 10);
+  searchExact(q, x, rE, riE, NNs);
+  gettimeofday(&tvE,NULL);
+  searchTime =  timeDiff(tvB,tvE);
+  printf("searchExact time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+  
+  gettimeofday(&tvB,NULL);
+  searchExactManyCoresK(q, x, rE, riE, nnk1, 1);
   gettimeofday(&tvE,NULL);
   searchTime =  timeDiff(tvB,tvE);
   printf("searchExactManyCoresK time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
 
   gettimeofday(&tvB,NULL);
-  searchExactK(q, x, rE, riE, nnk2, 10);
+  searchExactK(q, x, rE, riE, nnk2, 1);
   gettimeofday(&tvE,NULL);
   searchTime =  timeDiff(tvB,tvE);
   printf("searchExactK time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
 
   for(i=0; i<m; i++){
     unint j;
-    for(j=0; j<10; j++){
+    for(j=0; j<1; j++){
       if(nnk1[i][j]!=nnk2[i][j])// &&distVec(q,x,i,nnk1[i][j])!= distVec(q,x,i,nnk2[i][j]))
   	printf("!! %d %d %6.5f %6.5f \n",nnk1[i][j],nnk2[i][j], distVec(q,x,i,nnk1[i][j]),distVec(q,x,i,nnk2[i][j]));
     }

@@ -1,5 +1,33 @@
 //This file collects versions of functions that are no longer used.
 
+//Returns a length l subset of a random permutation of [0,...,n-1]
+//using the knuth shuffle.
+//Input variable x is assumed to be alloced and of size l.
+
+void subRandPerm(unint,unint,unint*);
+void subRandPerm(unint l, unint n, unint *x){
+  unint i,ri, *y;
+  y = (unint*)calloc(n,sizeof(*y));
+    
+  struct timeval t3;
+  gettimeofday(&t3,NULL);
+  srand(t3.tv_usec);
+  
+  for(i=0;i<n;i++)
+    y[i]=i;
+  
+  for(i=0;i<MIN(l,n-1);i++){  //The n-1 bit is necessary because you can't swap the last 
+                              //element with something larger.
+    ri=randBetween(i+1,n);
+    swap(&y[i],&y[ri]);
+  }
+  
+  for(i=0;i<l;i++)
+    x[i]=y[i];
+  free(y);
+}
+
+
 void bruteList(matrix,matrix,rep*,intList*,unint,unint*,real*);
 void bruteList(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, unint *NNs, real *dToNNs){
   real temp;

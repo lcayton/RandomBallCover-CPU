@@ -10,7 +10,6 @@
 
 void swap(unint*,unint*);
 void randPerm(unint,unint*);
-void subRandPerm(unint,unint,unint*);
 unint randBetween(unint,unint);
 void printMat(matrix);
 void printMatWithIDs(matrix,unint*);
