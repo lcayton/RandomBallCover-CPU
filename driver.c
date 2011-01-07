@@ -7,7 +7,7 @@
 #include "utils.h" 
 #include "brute.h"
 #include "rbc.h"
-
+void testHam(matrix,matrix);
 void parseInput(int,char**);
 void readData(char*,unint,unint,real*);
 void readDataText(char*,unint,unint,real*);
@@ -81,6 +81,8 @@ int main(int argc, char**argv){
     free(dToNNs);
   }
 
+  testHam(x,q);
+
   matrix rE;
   rep *riE = (rep*)calloc( CPAD(numReps), sizeof(*riE) );
   
@@ -111,6 +113,65 @@ int main(int argc, char**argv){
   
   free(x.mat);
   free(q.mat);
+}
+
+
+void testHam(matrix x, matrix q){
+  matrix r;
+  unint numReps = 64;
+  
+  unint i, j, k, l;
+  real *repWidth = (real*)calloc(numReps, sizeof(*repWidth));
+  unsigned long *bits = (unsigned long*)calloc(x.pr, sizeof(*bits));
+  unsigned long *qb = (unsigned long*)calloc(q.pr, sizeof(*qb));
+
+  intList *lNNs = (intList*)calloc(q.pr, sizeof(*lNNs));
+
+  buildBit(x, &r, repWidth, bits, numReps);
+  getBitRep(q, r, repWidth, qb);
+  unint avg=0;
+  
+  unint **nnCorrect = (unint**)calloc(q.pr, sizeof(*nnCorrect));
+  real **dT = (real**)calloc(q.pr, sizeof(*dT));
+  for(i=0; i<q.pr; i++){
+    nnCorrect[i] = (unint*)calloc(K, sizeof(**nnCorrect));
+    dT[i] = (real*)calloc(K, sizeof(**dT));
+  }
+
+  bruteK(x, q, nnCorrect, dT, K);
+  
+  for(i=0; i<64; i++){
+    for(j=0; j<q.pr; j++)
+      createList(&lNNs[j]);
+
+    searchBit(bits, qb, x.r, q.r, i, lNNs);
+
+    long col = 0;
+    for(j=0; j<q.r; j++){
+      for(k=0; k<K; k++){
+	for(l=0; l<lNNs[j].len; l++){
+	  col += (nnCorrect[j][k] == lNNs[j].x[l]);
+	}
+      }
+    }
+    printf("correct OL %d: %6.2f / %d \n", i, ((double)col)/((double)q.r),K);
+    avg=0;
+    for(j=0; j<q.r; j++)
+      avg+=lNNs[j].len;
+    printf("total OL %d: %6.2f\n", i, ((double)avg)/((double)q.r));
+    writeDoubs(5, outFile, (double)i, ((double)avg)/((double)q.r), (double)x.r, ((double)col)/((double)q.r), (double)K);
+    for(j=0; j<q.pr; j++)
+      destroyList(&lNNs[j]);
+  }
+
+  for(i=0; i<q.pr; i++){
+    free(nnCorrect[i]); free(dT[i]); }
+  free(nnCorrect); free(dT);
+  free(lNNs);
+  free(bits);
+  free(qb);
+  free(repWidth);
+  free(r.mat);
 }
 
 

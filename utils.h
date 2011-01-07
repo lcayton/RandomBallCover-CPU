@@ -31,4 +31,6 @@ void destroyHeap(heap*);
 void replaceMax(heap*,heapEl);
 void heapSort(heap*,unint*,real*);
 void reInitHeap(heap*);
+
+unint countBits(unsigned long);
 #endif

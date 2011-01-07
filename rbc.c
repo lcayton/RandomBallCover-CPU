@@ -13,6 +13,63 @@
 #include<stdio.h>
 
 //Builds the RBC for exact (1- or K-) NN search.
+void buildBit(matrix x, matrix *r, real *repWidth, unsigned long *bits, unint numReps){
+  unint n = x.r;
+  unint i,j ;
+
+  r->c=x.c; r->pc=x.pc; r->r=numReps; r->pr=CPAD(numReps); r->ld=r->pc;
+  r->mat = (real*)calloc( r->pc*r->pr, sizeof(*r->mat) );
+ 
+  //pick r random reps
+  pickReps(x,r);
+
+  //Compute the rep for each x
+  unint *repID = (unint*)calloc(x.pr, sizeof(*repID));
+  real *dToReps = (real*)calloc(x.pr, sizeof(*dToReps));
+ 
+  brutePar(*r,x,repID,dToReps);
+  
+  for(i=0; i<n; i++)
+    repWidth[repID[i]] = MAX( repWidth[repID[i]], dToReps[i] );
+  
+  //build bit representations
+  getBitRep(x, *r, repWidth, bits);
+
+  free(dToReps);
+  free(repID);
+}
+
+
+void getBitRep(matrix x, matrix r, real *repWidth, unsigned long *bits){
+  unint i, j, k;
+  
+#pragma omp parallel for private(i,j,k)
+  for(i=0; i<x.pr/CL; i++){
+    unint t = i*CL;
+    for(j=0; j<r.r; j++){
+      for(k=0; k<CL; k++){
+	if (distVec(x, r, t+k, j) < repWidth[j])
+	  bits[t+k] |= GETBIT(j);
+      }
+    }
+  }
+}
+
+
+void searchBit(unsigned long *bits, unsigned long *qbit, unint n, unint m, unint maxHamm , intList *l){
+  unint i,j;
+
+  for(i=0; i<m; i++){
+    for(j=0; j<n; j++){
+      if(countBits(bits[j]^qbit[i]) < maxHamm)
+	addToList(&l[i], j);
+    }
+  }
+}
+
+
+
+//Builds the RBC for exact (1- or K-) NN search.
 void buildExact(matrix x, matrix *r, rep *ri, unint numReps){
   unint n = x.r;
   unint i,j ;

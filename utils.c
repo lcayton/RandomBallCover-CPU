@@ -268,4 +268,26 @@ void heapSort(heap *hp, unint *sortInds, real *sortVals){
   }
 }
 
+
+// Basic bit counting routine, taken from
+// http://www-graphics.stanford.edu/~seander/bithacks.html
+unint countBits(unsigned long b){
+  static const unsigned char bitTable[256] = 
+    {
+#   define B2(n) n,     n+1,     n+1,     n+2
+#   define B4(n) B2(n), B2(n+1), B2(n+1), B2(n+2)
+#   define B6(n) B4(n), B4(n+1), B4(n+1), B4(n+2)
+      B6(0), B6(1), B6(1), B6(2)
+    };
+  
+  return bitTable[b & 0xff] +
+    bitTable[ (b >> 8) & 0xff] +
+    bitTable[ (b >> 16) & 0xff] +
+    bitTable[ (b >> 24) & 0xff] +
+    bitTable[ (b >> 32) & 0xff] +
+    bitTable[ (b >> 40) & 0xff] +
+    bitTable[ (b >> 48) & 0xff] +
+    bitTable[ (b >> 56) & 0xff];
+}
+
 #endif

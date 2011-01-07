@@ -62,6 +62,7 @@ typedef float real;
 // the same as max, but takes in index arguments (k,l) and returns
 // the index of the max instead of the max.
 
+#define GETBIT(i) ( 1ul<<(i) )
 
 typedef unsigned int unint;
 
