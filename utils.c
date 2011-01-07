@@ -156,9 +156,9 @@ void addToList(intList *l, unint newMem){
     l->x = y;
     l->x[l->len++] = newMem;
     l->maxLen *= 2;
-    
   }
 }
+
 
 void createList(intList *l){
   l->maxLen = DEF_LIST_SIZE;

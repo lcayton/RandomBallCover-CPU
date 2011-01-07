@@ -23,7 +23,7 @@ SUMMARY
 This is a C implementation of the Random Ball Cover data structure for
 fast nearest neighbor (NN) search, designed for shared-memory systems.
 All parallelization is handled through OpenMP.  This code contains
-both the one-shot (approximate) search algorithm, and exact the exact 
+both the one-shot (approximate) search algorithm, and the exact 
 search algorithm.  
 
 There is a different implementation available that runs on a GPU;

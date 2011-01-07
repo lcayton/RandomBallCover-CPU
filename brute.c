@@ -201,6 +201,79 @@ void bruteMap(matrix X, matrix Q, rep *ri, unint* qMap, unint *NNs, real *dToNNs
 }
 
 
+// Performs a brute force K-NN search, but only between queries and points 
+// belonging to each query's nearest representative.  This method is used by
+// the One-shot algorithm.  
+void bruteMapK(matrix X, matrix Q, rep *ri, unint* qMap, unint **NNs, real **dToNNs, unint K){
+  unint i, j, k;
+  
+  //Sort the queries, so that queries matched to a particular representative
+  //will be processed together, improving cache performance.
+  size_t *qSort = (size_t*)calloc(Q.pr, sizeof(*qSort));
+  gsl_sort_uint_index(qSort,qMap,1,Q.r);
+
+  unint nt = omp_get_max_threads();
+  unint m = Q.r;
+  
+  heap **hp;
+  hp = (heap**)calloc(nt, sizeof(*hp));
+  for(i=0; i<nt; i++){
+    hp[i] = (heap*)calloc(m, sizeof(**hp));
+    for(j=0; j<m; j++)
+      createHeap(&hp[i][j],K);
+  }   
+  
+
+#pragma omp parallel for private(j,k) schedule(static)
+  for( i=0; i<Q.pr/CL; i++ ){
+    unint row = i*CL;
+    unint tn = omp_get_thread_num();
+    heapEl newEl;
+    
+    real temp[CL];
+    rep rt[CL];
+    unint maxLen = 0;
+    for(j=0; j<CL; j++){
+      rt[j] = ri[qMap[qSort[row+j]]];
+      maxLen = MAX(maxLen, rt[j].len);
+    }  
+    
+    for(j=0; j<maxLen; j++ ){
+
+      for(k=0; k<CL; k++ ){
+	if( j<rt[k].len )
+	  temp[k] = distVec( Q, X, qSort[row+k], rt[k].lr[j] );
+      }
+      
+      for(k=0; k<CL; k++ ){
+	if( j<rt[k].len ){
+	  //	  temp = distVec( Q, X, qSort[row+k], rt[k].lr[j] );
+	  if( temp[k] < hp[tn][k].h[0].val ){
+	    newEl.id = rt[k].lr[j];
+	    newEl.val = temp[k];
+	    replaceMax( &hp[tn][k], newEl );
+	  }
+	}
+      }
+    }
+    
+    for(j=0; j<CL; j++)
+      heapSort( &hp[tn][j], NNs[qSort[row+j]], dToNNs[qSort[row+j]] );
+    
+    for(j=0; j<CL; j++)
+      reInitHeap(&hp[tn][j]);
+  }
+
+  for(i=0; i<nt; i++){
+    for(j=0; j<CL; j++)
+      destroyHeap(&hp[i][j]);
+    free(hp[i]);
+  }
+  free(hp);
+  free(qSort);
+}
+
+
 // Performs a brute force search between X and Q, but only compares distances
 // between (x,q) pairs specified by toSearch.  This is used by the searchExact
 // RBC method.

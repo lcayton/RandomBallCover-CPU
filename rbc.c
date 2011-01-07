@@ -341,9 +341,11 @@ void buildOneShot(matrix x, matrix *r, rep *ri, unint numReps, unint s){
   for( i=0; i<r->pr; i++){
     ri[i].lr = (unint*)calloc(ps, sizeof(*ri[i].lr));
     ri[i].len = s;
-    for (j=0; j<s; j++)
+    for (j=0; j<s; j++){
       ri[i].lr[j] = repID[i][j];
-    //    ri[i].radius = distVec( r, x, i, ri[i].lr[s-1]);  Not needed by one-shot alg
+    }
+    ri[i].radius = distVec( *r, x, i, ri[i].lr[s-1]);  //Not needed by one-shot alg
+    // printf("%6.2f \n",ri[i].radius);
   }
   
   for( i=0; i<r->pr; i++){
@@ -369,6 +371,28 @@ void searchOneShot(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
   
   free(repID);
   free(dToReps);
+}
+
+
+// Performs (approx) 1-NN search with the RBC One-shot algorithm.
+void searchOneShotK(matrix q, matrix x, matrix r, rep *ri, unint **NNs, unint K){
+  int i;
+  unint *repID = (unint*)calloc(q.pr, sizeof(*repID));
+  real **dToReps = (real**)calloc(q.pr, sizeof(*dToReps));
+  for(i=0; i<q.pr; i++)
+    dToReps[i] = (real*)calloc(K, sizeof(**dToReps));
+  real *dT = (real*)calloc(q.pr, sizeof(*dT));
+  // Determine which rep each query is closest to.
+  brutePar(r,q,repID,dT);
+  
+  // Search that rep's ownership list.
+  bruteMapK(x,q,ri,repID,NNs,dToReps,K);
+  
+  free(repID);
+  for(i=0; i<q.pr; i++)
+    free(dToReps[i]);
+  free(dToReps);
+  free(dT);
 }
 
 

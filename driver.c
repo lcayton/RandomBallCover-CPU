@@ -12,12 +12,15 @@ void parseInput(int,char**);
 void readData(char*,unint,unint,real*);
 void readDataText(char*,unint,unint,real*);
 void orgData(real*,unint,unint,matrix,matrix);
-void evalApprox(matrix, matrix,unint*);
+void evalApprox(matrix,matrix,unint*);
+double evalApproxK(matrix,matrix,unint**,unint);
 void writeDoubs(int, char*, double,...);
 
 char *dataFile, *outFile;
 unint n=0, m=0, d=0, numReps=0, s=0, D=0, runBrute=0;
 unint deviceNum=0;
+unint K = 1;
+
 int main(int argc, char**argv){
   real *data;
   matrix x, q;
@@ -25,35 +28,10 @@ int main(int argc, char**argv){
   real *dToNNs;
   unint i;
   struct timeval tvB,tvE;
-  
+
   printf("********************************\n");
   printf("RANDOM BALL COVER -- CPU version\n");
   printf("********************************\n");
-  
-  /* heap h; */
-  /* createHeap(&h,8); */
-  /* //  for(i=0;i<8;i++) */
-  /* //  printf("%6.2f ",h.h[i].val); */
-  /* heapEl t; */
-  /* gettimeofday(&tvB,NULL); */
-  /* srand(tvB.tv_usec); */
-  /* for(i=0;i<16;i++){ */
-  /*   t.val=((real)rand())/((real)RAND_MAX); */
-  /*   t.id=i; */
-  /*   replaceMax(&h,t); */
-  /* } */
-  /* for(i=0;i<8;i++) */
-  /*   printf("(%u, %6.2f) ",h.h[i].id, h.h[i].val); */
-  /* printf("\n"); */
-  /* unint *sortInds = (unint*)calloc(8, sizeof(*sortInds)); */
-  /* real *sortVals = (real*)calloc(8, sizeof(*sortVals)); */
-  /* heapSort(&h,sortInds,sortVals); */
-  /* for(i=0;i<8;i++) */
-  /*   printf("(%u, %6.4f) ", sortInds[i],sortVals[i]); */
-  /* printf("\n"); */
-
-  /* destroyHeap(&h); */
-  /* return; */
 
   parseInput(argc,argv);
 
@@ -72,106 +50,65 @@ int main(int argc, char**argv){
     exit(1);
   }
   
-  NNs = (unint*)calloc( pm, sizeof(*NNs) );
-  NNsPar = (unint*)calloc( pm, sizeof(*NNs) );
-  dToNNs = (real*)calloc( pm, sizeof(*dToNNs) );
-
   readData(dataFile, (n+m), d, data);
   orgData(data, (n+m), d, x, q);
   free(data);
   
-  for(i=0;i<m;i++)
-    NNs[i] = DUMMY_IDX;
-  
-  unint **nnk1;
-  unint **nnk2;
+  unint **nnk;
   real **dk;
   
-  nnk1 = (unint**)calloc(pm, sizeof(*nnk1));
-  nnk2 = (unint**)calloc(pm, sizeof(*nnk2));
+  nnk = (unint**)calloc(pm, sizeof(*nnk));
   dk = (real**)calloc(pm, sizeof(*dk));
   for(i=0; i<pm; i++){
-    nnk1[i] = (unint*)calloc(1, sizeof(**nnk1));
-    nnk2[i] = (unint*)calloc(1, sizeof(**nnk2));
-    dk[i] = (real*)calloc(1, sizeof(**dk));
+    nnk[i] = (unint*)calloc(K, sizeof(**nnk));
+    dk[i] = (real*)calloc(K, sizeof(**dk));
   }
-
-  /* gettimeofday(&tvB,NULL); */
-  /* bruteK(x,q,nnk1,1); */
-  /* gettimeofday(&tvE,NULL); */
-  /* printf("bruteK time elapsed = %6.4f \n", timeDiff(tvB,tvE) ); */
-
-  /* gettimeofday(&tvB,NULL); */
-  /* bruteKHeap(x,q,nnk2,dk,1); */
-  /* gettimeofday(&tvE,NULL); */
-  /* printf("bruteKTemp time elapsed = %6.4f \n", timeDiff(tvB,tvE) ); */
 
   int threadMax = omp_get_max_threads();
   printf("number of threads = %d \n",threadMax);
 
   if(runBrute){
+    unint *NNsBrute = (unint*)calloc( pm, sizeof(*NNsBrute) );
+    real *dToNNs = (real*)calloc( pm, sizeof(*dToNNs) );;
     gettimeofday(&tvB,NULL);
     brutePar(x,q,NNsPar,dToNNs);
     gettimeofday(&tvE,NULL);
     double bruteTime = timeDiff(tvB,tvE);
+    printf("brute time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
     if(outFile)
       writeDoubs(1,outFile,bruteTime);
+    free(NNsBrute);
+    free(dToNNs);
   }
-  
+
   matrix rE;
   rep *riE = (rep*)calloc( CPAD(numReps), sizeof(*riE) );
-
+  
   gettimeofday(&tvB,NULL);
-  buildExact(x, &rE, riE, numReps);
+  buildOneShot(x, &rE, riE, numReps, s);
   gettimeofday(&tvE,NULL);
   double buildTime =  timeDiff(tvB,tvE);
-  printf("exact build time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+  printf("one-shot build time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
 
   gettimeofday(&tvB,NULL);
-  searchExactManyCores(q, x, rE, riE, NNs);
-  gettimeofday(&tvE,NULL);
+  searchOneShotK(q, x, rE, riE, nnk, K);
+  gettimeofday(&tvE,NULL); 
   double searchTime =  timeDiff(tvB,tvE);
-  printf("searchExactManyCores time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+  printf("one-shot search time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+
+  double ol = evalApproxK(q, x, nnk, K);
   
-  gettimeofday(&tvB,NULL);
-  searchExact(q, x, rE, riE, NNs);
-  gettimeofday(&tvE,NULL);
-  searchTime =  timeDiff(tvB,tvE);
-  printf("searchExact time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
-  
-  gettimeofday(&tvB,NULL);
-  searchExactManyCoresK(q, x, rE, riE, nnk1, 1);
-  gettimeofday(&tvE,NULL);
-  searchTime =  timeDiff(tvB,tvE);
-  printf("searchExactManyCoresK time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
-
-  gettimeofday(&tvB,NULL);
-  searchExactK(q, x, rE, riE, nnk2, 1);
-  gettimeofday(&tvE,NULL);
-  searchTime =  timeDiff(tvB,tvE);
-  printf("searchExactK time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
-
-  for(i=0; i<m; i++){
-    unint j;
-    for(j=0; j<1; j++){
-      if(nnk1[i][j]!=nnk2[i][j])// &&distVec(q,x,i,nnk1[i][j])!= distVec(q,x,i,nnk2[i][j]))
-  	printf("!! %d %d %6.5f %6.5f \n",nnk1[i][j],nnk2[i][j], distVec(q,x,i,nnk1[i][j]),distVec(q,x,i,nnk2[i][j]));
-    }
-  }
-
-  double avgDists;
-  searchStats(q,x,rE,riE,&avgDists);
-
   if(outFile)
-    writeDoubs(5,outFile,((double)rE.r),((double)D),buildTime,searchTime,avgDists);
+    writeDoubs(3,outFile,(double)2*numReps,(double)n,ol,(double)K);
 
   free(rE.mat);
   for(i=0; i<rE.pr; i++)
     free(riE[i].lr);
   free(riE);
+  for(i=0; i<pm; i++)
+    free(nnk[i]);
+  free(nnk);
   
-  free(dToNNs);
-  free(NNs);
   free(x.mat);
   free(q.mat);
 }
@@ -180,7 +117,7 @@ int main(int argc, char**argv){
 void parseInput(int argc, char **argv){
   int i=1;
   if(argc <= 1){
-    printf("\nusage: \n  testRBC -f datafile (bin) -n numPts (DB) -m numQueries -d dim -r numReps -s numPtsPerRep [-D rDim] [-o outFile] \n\n");
+    printf("\nusage: \n  testRBC -f datafile (bin) -n numPts (DB) -m numQueries -d dim -r numReps -s numPtsPerRep [-D rDim] [-o outFile] [-b] [-k neighbs]\n\n");
     printf("\tdatafile     = binary file containing the data\n");
     printf("\tnumPts       = size of database\n");
     printf("\tnumQueries   = number of queries\n");
@@ -189,6 +126,7 @@ void parseInput(int argc, char **argv){
     printf("\tnumPtsPerRep = number of points assigned to each representative\n");
     printf("\toutFile      = output file (optional); stored in text format\n");
     printf("\trDim         = reduced dimensionality\n"); 
+    printf("\tneighbs      = num neighbors\n"); 
     printf("\n\n");
     exit(0);
   }
@@ -212,6 +150,8 @@ void parseInput(int argc, char **argv){
       runBrute = 1;
     else if(!strcmp(argv[i], "-o"))
       outFile = argv[++i];
+    else if(!strcmp(argv[i], "-k"))
+      K = atoi(argv[++i]);
     else{
       fprintf(stderr,"%s : unrecognized option.. exiting\n",argv[i]);
       exit(1);
@@ -321,6 +261,42 @@ void evalApprox(matrix q, matrix x, unint *NNs){
 
   free(counts);
   free(ranges);
+}
+
+
+double evalApproxK(matrix q, matrix x, unint **NNs, unint K){
+  unint i,j,k;
+  struct timeval tvB, tvE;
+  unint **nnCorrect = (unint**)calloc(q.pr, sizeof(*nnCorrect));
+  real **dT = (real**)calloc(q.pr, sizeof(*dT));
+  for(i=0; i<q.pr; i++){
+    nnCorrect[i] = (unint*)calloc(K, sizeof(**nnCorrect));
+    dT[i] = (real*)calloc(K, sizeof(**dT));
+  }
+
+  gettimeofday(&tvB,NULL); 
+  bruteK(x, q, nnCorrect, dT, K);
+  gettimeofday(&tvE,NULL); 
+  
+  unsigned long ol = 0;
+  for(i=0; i<q.r; i++){
+    for(j=0; j<K; j++){
+      for(k=0; k<K; k++){
+	ol += (NNs[i][j] == nnCorrect[i][k]);
+      }
+    }
+  }
+  printf("avg overlap = %6.4f / %d\n", ((double)ol)/((double)q.r), K);
+  printf("(bruteK took %6.4f seconds) \n",timeDiff(tvB,tvE));
+  
+  for(i=0; i<q.pr; i++){
+    free(nnCorrect[i]);
+    free(dT[i]);
+  }
+  free(nnCorrect);
+  free(dT);
+  
+  return ((double)ol)/((double)q.r);
 }
 
 

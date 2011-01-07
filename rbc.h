@@ -10,5 +10,6 @@ void searchExactManyCores(matrix,matrix,matrix,rep*,unint*);
 void searchExactManyCoresK(matrix,matrix,matrix,rep*,unint**,unint);
 void buildOneShot(matrix,matrix*,rep*,unint,unint);
 void searchOneShot(matrix,matrix,matrix,rep*,unint*);
+void searchOneShotK(matrix,matrix,matrix,rep*,unint**,unint);
 void pickReps(matrix,matrix*);
 #endif

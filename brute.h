@@ -12,6 +12,7 @@ void brutePar(matrix,matrix,unint*,real*);
 void bruteK(matrix,matrix,unint**,real**,unint);
 void bruteKHeap(matrix, matrix,unint**,real**, unint);
 void bruteMap(matrix,matrix,rep*,unint*,unint*,real*);
+void bruteMapK(matrix,matrix,rep*,unint*,unint**,real**,unint);
 void bruteListK(matrix,matrix,rep*,intList*,unint,unint**,real**,unint);
 void rangeCount(matrix,matrix,real*,unint*);
 #endif
