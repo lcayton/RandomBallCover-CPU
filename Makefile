@@ -1,6 +1,6 @@
 CC=gcc
 #other flags -O3 -funroll-loops  -msse -g
-CCFLAGS= -fopenmp -O3 -funroll-loops -msse 
+CCFLAGS= -fopenmp -O3 -funroll-loops -msse -g -Wall
 SOURCES= driver.c utils.c brute.c rbc.c 
 LINKFLAGS= -lgsl -lgslcblas -lm
 OBJECTS=$(SOURCES:.c=.o)

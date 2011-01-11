@@ -18,15 +18,15 @@
 #define DEF_LIST_SIZE 1024
 
 // The following macros define the distance measure.
-#define DIST(i,j) ( fabs((i)-(j)) )  // L_1
+//#define DIST(i,j) ( fabs((i)-(j)) )  // L_1
 // This macro returns the distance for a single coordinate.
 
-#define DIST_EXP(x) ( (x) ); //L_1
+//#define DIST_EXP(x) ( (x) ); //L_1
 // This macro defines the exponent applied to the summed DIST values.
 
 // L_2 versions of the above macros:
-//#define DIST(i,j) ( ( (i)-(j) )*( (i)-(j) ) )  // L_2
-//#define DIST_EXP(x) ( sqrt(x) ); //L_2
+#define DIST(i,j) ( ( (i)-(j) )*( (i)-(j) ) )  // L_2
+#define DIST_EXP(x) ( sqrt(x) ); //L_2
 
 // Format that the data is manipulated in:
 typedef float real;

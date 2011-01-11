@@ -23,6 +23,7 @@ void copyMat(matrix*,matrix*);
 
 void addToList(intList*,unint);
 void createList(intList*);
+void createSizedList(intList*,unint);
 void destroyList(intList*);
 void printList(intList*);
 

@@ -142,7 +142,7 @@ double timeDiff(struct timeval start, struct timeval end){
 
 
 /* ********************
-   Implementation of a basic list data type (see defs.h).
+   Implementation of a basic resizable list data type (see defs.h).
 */
 void addToList(intList *l, unint newMem){
   if (l->len < l->maxLen)
@@ -163,9 +163,22 @@ void addToList(intList *l, unint newMem){
 void createList(intList *l){
   l->maxLen = DEF_LIST_SIZE;
   l->x = (unint*)calloc(DEF_LIST_SIZE, sizeof(*l->x));
+  if(!l->x){
+    printf("unable to alloc list, exiting\n");
+    exit(1);
+  }
+    
   l->len = 0;
 }
 
+void createSizedList(intList *l, unint len){
+  l->len=l->maxLen = len;
+  l->x = (unint*)calloc(len, sizeof(*l->x));
+  if(!l->x){
+    printf("unable to alloc list, exiting\n");
+    exit(1);
+  }
+}
 
 void destroyList(intList *l){
   free(l->x);
@@ -269,25 +282,26 @@ void heapSort(heap *hp, unint *sortInds, real *sortVals){
 }
 
 
-// Basic bit counting routine, taken from
+// Basic bit counting routine, based on
 // http://www-graphics.stanford.edu/~seander/bithacks.html
 unint countBits(unsigned long b){
-  static const unsigned char bitTable[256] = 
+  static const unsigned char bitTable16[65536] = 
     {
 #   define B2(n) n,     n+1,     n+1,     n+2
 #   define B4(n) B2(n), B2(n+1), B2(n+1), B2(n+2)
 #   define B6(n) B4(n), B4(n+1), B4(n+1), B4(n+2)
-      B6(0), B6(1), B6(1), B6(2)
+#   define B8(n) B6(n), B6(n+1), B6(n+1), B6(n+2)
+#   define B10(n) B8(n), B8(n+1), B8(n+1), B8(n+2)
+#   define B12(n) B10(n), B10(n+1), B10(n+1), B10(n+2)
+#   define B14(n) B12(n), B12(n+1), B12(n+1), B12(n+2)
+      B14(0), B14(1), B14(1), B14(2)
     };
   
-  return bitTable[b & 0xff] +
-    bitTable[ (b >> 8) & 0xff] +
-    bitTable[ (b >> 16) & 0xff] +
-    bitTable[ (b >> 24) & 0xff] +
-    bitTable[ (b >> 32) & 0xff] +
-    bitTable[ (b >> 40) & 0xff] +
-    bitTable[ (b >> 48) & 0xff] +
-    bitTable[ (b >> 56) & 0xff];
+  return bitTable16[b & 0xffff] +
+    bitTable16[ (b >> 16) & 0xffff ] +
+    bitTable16[ (b >> 32) & 0xffff ] +
+    bitTable16[ (b >> 48) & 0xffff ];
+  
 }
 
 #endif

@@ -11,18 +11,68 @@
 #include<gsl/gsl_sort.h>
 #include<sys/time.h>
 #include<stdio.h>
+#include<math.h>
 
-//Builds the RBC for exact (1- or K-) NN search.
+void furthestFirst(matrix x, matrix r){
+  //the following simply generates a rand int.  It should be moved
+  gsl_rng * rng;
+  const gsl_rng_type *rngT;
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  gsl_rng_env_setup();
+  rngT = gsl_rng_default;
+  rng = gsl_rng_alloc(rngT);
+  gsl_rng_set(rng,tv.tv_usec);
+  unint first = (unint)floor(gsl_ran_flat(rng, 0.0, (double)r.r));
+  gsl_rng_free(rng);
+  //end rand int generation
+
+  unint i, j;
+
+  matrix dummy;
+  dummy.r=1; dummy.pr=PAD(dummy.r); dummy.c=x.c; dummy.pc=x.pc; dummy.ld=x.ld;
+  dummy.mat = (real*)calloc(dummy.pr*dummy.pc, sizeof(*dummy.mat));
+
+  real *dists = (real*)calloc(x.pr, sizeof(*dists));
+  real *oldDists = (real*)calloc(x.pr, sizeof(*oldDists));
+  unint *ids = (unint*)calloc(x.pr, sizeof(*ids));
+
+  copyVector(dummy.mat, &x.mat[IDX(first, 0, x.ld)], x.c);
+  copyVector(r.mat, &x.mat[IDX(first, 0, x.ld)], x.c);
+  for(i=0; i<x.c; i++)
+    oldDists[i] = MAX_REAL;
+  for(i=1; i<r.r; i++){
+    //find farthest
+    brutePar(dummy, x, ids, dists);
+    for(j=0; j<x.r; j++)
+      oldDists[j] = dists[j] = MIN(dists[j], oldDists[j]);
+    real max=-1.0;
+    unint maxInd = DUMMY_IDX;
+    for(j=0; j<x.r; j++){
+      maxInd = MAXI( dists[j], max, j, maxInd );
+      max = MAX( dists[j], max );
+    }
+    copyVector(dummy.mat, &x.mat[IDX(maxInd, 0, x.ld)], x.c);
+    copyVector(&r.mat[IDX(i, 0, r.ld)], &x.mat[IDX(maxInd, 0, x.ld)], x.c);
+  }
+
+
+
+  free(dummy.mat);
+  free(dists); free(oldDists); free(ids); 
+}
+
+//Builds the RBC for hash-based search.
 void buildBit(matrix x, matrix *r, real *repWidth, unsigned long *bits, unint numReps){
   unint n = x.r;
-  unint i,j ;
+  unint i;
 
   r->c=x.c; r->pc=x.pc; r->r=numReps; r->pr=CPAD(numReps); r->ld=r->pc;
   r->mat = (real*)calloc( r->pc*r->pr, sizeof(*r->mat) );
  
   //pick r random reps
-  pickReps(x,r);
-
+  //  pickReps(x,r);
+  furthestFirst(x, *r);
   //Compute the rep for each x
   unint *repID = (unint*)calloc(x.pr, sizeof(*repID));
   real *dToReps = (real*)calloc(x.pr, sizeof(*dToReps));
@@ -43,7 +93,7 @@ void buildBit(matrix x, matrix *r, real *repWidth, unsigned long *bits, unint nu
 void getBitRep(matrix x, matrix r, real *repWidth, unsigned long *bits){
   unint i, j, k;
   
-#pragma omp parallel for private(i,j,k)
+#pragma omp parallel for private(j,k)
   for(i=0; i<x.pr/CL; i++){
     unint t = i*CL;
     for(j=0; j<r.r; j++){
@@ -59,6 +109,7 @@ void getBitRep(matrix x, matrix r, real *repWidth, unsigned long *bits){
 void searchBit(unsigned long *bits, unsigned long *qbit, unint n, unint m, unint maxHamm , intList *l){
   unint i,j;
 
+#pragma omp parallel for private(j)
   for(i=0; i<m; i++){
     for(j=0; j<n; j++){
       if(countBits(bits[j]^qbit[i]) < maxHamm)
@@ -68,11 +119,10 @@ void searchBit(unsigned long *bits, unsigned long *qbit, unint n, unint m, unint
 }
 
 
-
 //Builds the RBC for exact (1- or K-) NN search.
 void buildExact(matrix x, matrix *r, rep *ri, unint numReps){
   unint n = x.r;
-  unint i,j ;
+  unint i;
 
   r->c=x.c; r->pc=x.pc; r->r=numReps; r->pr=CPAD(numReps); r->ld=r->pc;
   r->mat = (real*)calloc( r->pc*r->pr, sizeof(*r->mat) );
@@ -374,7 +424,6 @@ void searchExactManyCoresK(matrix q, matrix x, matrix r, rep *ri, unint **NNs, u
 
 //Builds the RBC for the One-shot (inexact) method.
 void buildOneShot(matrix x, matrix *r, rep *ri, unint numReps, unint s){
-  unint n = x.r;
   unint ps = CPAD(s);
   unint i, j;
   
@@ -416,7 +465,6 @@ void buildOneShot(matrix x, matrix *r, rep *ri, unint numReps, unint s){
 
 // Performs (approx) 1-NN search with the RBC One-shot algorithm.
 void searchOneShot(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
-  int i;
   unint *repID = (unint*)calloc(q.pr, sizeof(*repID));
   real *dToReps = (real*)calloc(q.pr, sizeof(*dToReps));
   
@@ -462,12 +510,16 @@ void pickReps(matrix x, matrix *r){
   for(i=0; i<n; i++)
     shuf[i]=i;
 
+
+  struct timeval tv;
+  gettimeofday(&tv,NULL);
   gsl_rng * rng;
   const gsl_rng_type *rngT;
   
   gsl_rng_env_setup();
   rngT = gsl_rng_default;
   rng = gsl_rng_alloc(rngT);
+  gsl_rng_set(rng,tv.tv_usec);
   
   gsl_ran_shuffle(rng, shuf, n, sizeof(*shuf));
   gsl_rng_free(rng);
