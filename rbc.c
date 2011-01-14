@@ -71,8 +71,8 @@ void buildBit(matrix x, matrix *r, real *repWidth, unsigned long *bits, unint nu
   r->mat = (real*)calloc( r->pc*r->pr, sizeof(*r->mat) );
  
   //pick r random reps
-  //  pickReps(x,r);
-  furthestFirst(x, *r);
+  pickReps(x,r);
+  //furthestFirst(x, *r);
   //Compute the rep for each x
   unint *repID = (unint*)calloc(x.pr, sizeof(*repID));
   real *dToReps = (real*)calloc(x.pr, sizeof(*dToReps));

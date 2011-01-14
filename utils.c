@@ -123,10 +123,10 @@ real distVec(matrix x, matrix y, unint k, unint l){
   real ans[VEC_LEN];
   real sum=0;
 
-  for(i=0;i<VEC_LEN;i++)
+  for(i=0; i<VEC_LEN; i++)
     ans[i]=0;
   
-  for(i=0;i<x.pc/VEC_LEN;i+=VEC_LEN){
+  for(i=0; i<x.pc; i+=VEC_LEN){
     for(j=0; j<VEC_LEN; j++)
       ans[j] += DIST( x.mat[IDX(k,i+j,x.ld)], y.mat[IDX(l,i+j,x.ld)] );
   }

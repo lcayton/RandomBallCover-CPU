@@ -20,7 +20,6 @@ void writeDoubs(int, char*, double,...);
 
 char *dataFile, *outFile;
 unint n=0, m=0, d=0, numReps=0, s=0, D=0, runBrute=0;
-unint deviceNum=0;
 unint K = 1;
 
 int main(int argc, char**argv){
@@ -145,7 +144,6 @@ void testHam(matrix x, matrix q){
   for(i=0; i<64; i++){
     
     //    searchBit(bits, qb, x.r, q.r, i, lNNs);
-        
     long col = 0;
     long avg = 0;
 #pragma omp parallel for private(k,l) reduction(+:col,avg) 
