@@ -53,15 +53,7 @@ int main(int argc, char**argv){
   orgData(data, (n+m), d, x, q);
   free(data);
   
-  unint **nnk;
-  real **dk;
-  
-  nnk = (unint**)calloc(pm, sizeof(*nnk));
-  dk = (real**)calloc(pm, sizeof(*dk));
-  for(i=0; i<pm; i++){
-    nnk[i] = (unint*)calloc(K, sizeof(**nnk));
-    dk[i] = (real*)calloc(K, sizeof(**dk));
-  }
+  unint *NNs = calloc(pm, sizeof(*NNs));; 
 
   int threadMax = omp_get_max_threads();
   printf("number of threads = %d \n",threadMax);
@@ -85,102 +77,36 @@ int main(int argc, char**argv){
   rep *riE = (rep*)calloc( CPAD(numReps), sizeof(*riE) );
   
   gettimeofday(&tvB,NULL);
-  buildOneShot(x, &rE, riE, numReps, s);
+  buildExact(x, &rE, riE, numReps);
   gettimeofday(&tvE,NULL);
   double buildTime =  timeDiff(tvB,tvE);
-  printf("one-shot build time elapsed = %6.4f \n", buildTime );
+  printf("exact build time elapsed = %6.4f \n", buildTime );
 
   gettimeofday(&tvB,NULL);
-  searchOneShotK(q, x, rE, riE, nnk, K);
+  searchExactManyCores(q, x, rE, riE, NNs);
   gettimeofday(&tvE,NULL);
   double searchTime =  timeDiff(tvB,tvE);
   printf("one-shot search time elapsed = %6.4f \n", searchTime );
 
-  double ol = evalApproxK(q, x, nnk, K);
+  double avgDists;
+  searchStats(q,x,rE,riE,&avgDists);
+
   
   if(outFile)
-    writeDoubs(4,outFile,(double)2*numReps,(double)n,ol,(double)K);
+    writeDoubs(5,outFile,(double)numReps,((double)D),buildTime,searchTime,avgDists);
 
   free(rE.mat);
   for(i=0; i<rE.pr; i++)
     free(riE[i].lr);
   free(riE);
-  for(i=0; i<pm; i++)
-    free(nnk[i]);
-  free(nnk);
-  
+  free(NNs);
   free(x.mat);
   free(q.mat);
   return 0;
 }
 
 
-/* void testHam(matrix x, matrix q){ */
-/*   matrix r; */
-/*   unint bitLength = 64; */
-/*   unint batchSize = 10; //num queries to process at once */
-/*   struct timeval tvB, tvE; */
-  
-/*   unint i, j, k, l, p; */
-/*   real *repWidth = (real*)calloc(bitLength, sizeof(*repWidth)); */
-/*   unsigned long *bits = (unsigned long*)calloc(x.pr, sizeof(*bits)); */
-/*   unsigned long *qb = (unsigned long*)calloc(q.pr, sizeof(*qb)); */
-  
-/*   buildBit(x, &r, repWidth, bits, bitLength); */
-/*   getBitRep(q, r, repWidth, qb); */
-  
-/*   unint **nnCorrect = (unint**)calloc(q.pr, sizeof(*nnCorrect)); */
-/*   real **dT = (real**)calloc(q.pr, sizeof(*dT)); */
-/*   for(i=0; i<q.pr; i++){ */
-/*     nnCorrect[i] = (unint*)calloc(K, sizeof(**nnCorrect)); */
-/*     dT[i] = (real*)calloc(K, sizeof(**dT)); */
-/*   } */
 
-/*   bruteK(x, q, nnCorrect, dT, K); */
-  
-/*   for(i=0; i<64; i++){ */
-    
-/*     //    searchBit(bits, qb, x.r, q.r, i, lNNs); */
-/*     long col = 0; */
-/*     long avg = 0; */
-/* #pragma omp parallel for private(k,l) reduction(+:col,avg)  */
-/*     for(j=0; j<q.r/batchSize; j++){ */
-/*       intList *lNNs = (intList*)calloc(batchSize, sizeof(*lNNs)); */
-/*       for(k=0; k<batchSize; k++) */
-/* 	createList(&lNNs[k]); */
-      
-/*       searchBit(bits, &qb[j*batchSize], x.r, batchSize, i, lNNs); */
-   
-/*       for(p=0; p<batchSize; p++){ */
-/* 	for(k=0; k<K; k++){ */
-/* 	  for(l=0; l<lNNs[p].len; l++){ */
-/* 	    col += (nnCorrect[j*batchSize+p][k] == lNNs[p].x[l]); */
-/* 	  } */
-/* 	} */
-/* 	avg += lNNs[p].len; */
-/*       } */
-
-/*       for(k=0; k<batchSize; k++) */
-/* 	destroyList(&lNNs[k]); */
-/*       free(lNNs); */
-/*     } */
-    
-/*     printf("correct OL %d: %6.2f / %d \n", i, ((double)col)/((double)q.r),K); */
-/*     printf("total OL %d: %6.2f\n", i, ((double)avg)/((double)q.r)); */
-/*     if(outFile) */
-/*       writeDoubs(5, outFile, (double)i, ((double)avg)/((double)q.r), (double)x.r, ((double)col)/((double)q.r), (double)K); */
-
-/*   } */
-
-/*   for(i=0; i<q.pr; i++){ */
-/*     free(nnCorrect[i]); free(dT[i]); } */
-/*   free(nnCorrect); free(dT); */
-/*   // free(lNNs); */
-/*   free(bits); */
-/*   free(qb); */
-/*   free(repWidth); */
-/*   free(r.mat); */
-/* } */
 
 
 void parseInput(int argc, char **argv){

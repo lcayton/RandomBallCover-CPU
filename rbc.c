@@ -12,6 +12,7 @@
 #include<sys/time.h>
 #include<stdio.h>
 #include<math.h>
+#include<stdint.h>
 
 void furthestFirst(matrix x, matrix r){
   //the following simply generates a rand int.  It should be moved
@@ -63,16 +64,17 @@ void furthestFirst(matrix x, matrix r){
 }
 
 //Builds the RBC for hash-based search.
-void buildBit(matrix x, matrix *r, real *repWidth, unsigned long *bits, unint numReps){
+void buildBit(matrix x, matrix *r, real *repWidth, uint32_t **xb, unint nbits){
   unint n = x.r;
   unint i;
 
-  r->c=x.c; r->pc=x.pc; r->r=numReps; r->pr=CPAD(numReps); r->ld=r->pc;
+  r->c=x.c; r->pc=x.pc; r->r=nbits; r->pr=CPAD(nbits); r->ld=r->pc;
   r->mat = (real*)calloc( r->pc*r->pr, sizeof(*r->mat) );
  
   //pick r random reps
   pickReps(x,r);
   //furthestFirst(x, *r);
+
   //Compute the rep for each x
   unint *repID = (unint*)calloc(x.pr, sizeof(*repID));
   real *dToReps = (real*)calloc(x.pr, sizeof(*dToReps));
@@ -83,36 +85,36 @@ void buildBit(matrix x, matrix *r, real *repWidth, unsigned long *bits, unint nu
     repWidth[repID[i]] = MAX( repWidth[repID[i]], dToReps[i] );
   
   //build bit representations
-  getBitRep(x, *r, repWidth, bits);
+  getBitRep(x, *r, repWidth, xb, nbits);
 
   free(dToReps);
   free(repID);
 }
 
 
-void getBitRep(matrix x, matrix r, real *repWidth, unsigned long *bits){
+void getBitRep(matrix x, matrix r, real *repWidth, uint32_t **xb, unint nbits){
   unint i, j, k;
-  
+  unint nwords = nbits/32;
+
 #pragma omp parallel for private(j,k)
-  for(i=0; i<x.pr/CL; i++){
-    unint t = i*CL;
-    for(j=0; j<r.r; j++){
-      for(k=0; k<CL; k++){
-	if (distVec(x, r, t+k, j) < repWidth[j])
-	  bits[t+k] |= GETBIT(j);
+  for(i=0; i<x.pr; i++){
+    for(j=0; j<nwords; j++){
+      for(k=0; k<32; k++){
+	  if (distVec(x, r, i, j*32+k) < repWidth[j*32+k])
+	    xb[i][j] |= GETBIT(k);
       }
     }
   }
 }
 
 
-void searchBit(unsigned long *bits, unsigned long *qbit, unint n, unint m, unint maxHamm , intList *l){
+void searchBit(uint32_t **xb, uint32_t **qb, unint n, unint m, unint maxHamm , intList *l, unint nbits){
   unint i,j;
 
 #pragma omp parallel for private(j)
   for(i=0; i<m; i++){
     for(j=0; j<n; j++){
-      if(countBits(bits[j]^qbit[i]) < maxHamm)
+      if(hamm(xb[j],qb[i],nbits/32) < maxHamm)
 	addToList(&l[i], j);
     }
   }
@@ -546,7 +548,6 @@ void searchStats(matrix q, matrix x, matrix r, rep *ri, double *avgDists){
   //for each q, need to determine which reps to examine
   size_t numAdded=0;
   size_t totalComp=0;
-  size_t numSaved=0;
 #pragma omp parallel for private(j) reduction(+:numAdded,totalComp)
   for(i=0; i<q.r; i++){
     for(j=0; j<r.r; j++ ){

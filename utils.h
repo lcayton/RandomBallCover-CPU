@@ -7,6 +7,7 @@
 
 #include "defs.h"
 #include<sys/time.h>
+#include<stdint.h>
 
 void swap(unint*,unint*);
 void randPerm(unint,unint*);
@@ -34,4 +35,5 @@ void heapSort(heap*,unint*,real*);
 void reInitHeap(heap*);
 
 unint countBits(unsigned long);
+unint hamm(uint32_t *x, uint32_t *y, unint nwords);
 #endif

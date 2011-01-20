@@ -10,6 +10,7 @@
 #include<stdlib.h>
 #include "utils.h"
 #include "defs.h"
+#include<stdint.h>
 
 //Generates a random permutation of 0, ... , n-1 using the knuth shuffle.
 void randPerm(unint n, unint *x){
@@ -304,4 +305,28 @@ unint countBits(unsigned long b){
   
 }
 
+
+unint hamm(uint32_t *x, uint32_t *y, unint nwords){
+ /*  static const unsigned char bitTable16[65536] =  */
+/*     { */
+/* #define B2(n) n,     n+1,     n+1,     n+2 */
+/* #define B4(n) B2(n), B2(n+1), B2(n+1), B2(n+2) */
+/* #define B6(n) B4(n), B4(n+1), B4(n+1), B4(n+2) */
+/* #define B8(n) B6(n), B6(n+1), B6(n+1), B6(n+2) */
+/* #define B10(n) B8(n), B8(n+1), B8(n+1), B8(n+2) */
+/* #define B12(n) B10(n), B10(n+1), B10(n+1), B10(n+2) */
+/* #define B14(n) B12(n), B12(n+1), B12(n+1), B12(n+2) */
+/*       B14(0), B14(1), B14(1), B14(2) */
+/*     }; */
+  
+  /* return bitTable16[b & 0xffff] + */
+  /*   bitTable16[ (b >> 16) & 0xffff ] + */
+  /*   bitTable16[ (b >> 32) & 0xffff ] + */
+  /*   bitTable16[ (b >> 48) & 0xffff ]; */
+  unint i;
+  unint ans=0;
+  for(i=0; i<nwords; i++)
+    ans+=__builtin_popcount(x[i]^y[i]);
+  return ans;
+}
 #endif

@@ -1,11 +1,13 @@
 #ifndef RBC_H
 #define RBC_H
 
+#include<stdint.h>
 #include "defs.h"
+
 void furthestFirst(matrix,matrix);
-void buildBit(matrix,matrix*,real*,unsigned long*,unint);
-void getBitRep(matrix, matrix, real*, unsigned long*);
-void searchBit(unsigned long*, unsigned long*, unint, unint, unint, intList*);
+void buildBit(matrix,matrix*,real*,uint32_t**,unint);
+void getBitRep(matrix, matrix, real*, uint32_t**,unint);
+void searchBit(uint32_t**, uint32_t**, unint, unint, unint, intList*,unint);
 void buildExact(matrix,matrix*,rep*,unint);
 void searchExact(matrix,matrix,matrix,rep*,unint*);
 void searchExactK(matrix,matrix,matrix,rep*,unint**,unint);

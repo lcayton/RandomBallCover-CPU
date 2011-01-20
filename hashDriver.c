@@ -9,6 +9,8 @@
 #include "utils.h" 
 #include "brute.h"
 #include "rbc.h"
+#include<stdint.h>
+
 void testHam(matrix,matrix);
 void parseInput(int,char**);
 void readData(char*,unint,unint,real*);
@@ -21,11 +23,12 @@ void writeDoubs(int, char*, double,...);
 char *dataFile, *outFile;
 unint n=0, m=0, d=0, numReps=0, s=0, D=0, runBrute=0;
 unint K = 1;
+unint nbits=32;
 
 int main(int argc, char**argv){
   real *data;
   matrix x, q;
-  unint i;
+  unint *NNsPar;
   struct timeval tvB,tvE;
 
   printf("********************************\n");
@@ -53,140 +56,110 @@ int main(int argc, char**argv){
   orgData(data, (n+m), d, x, q);
   free(data);
   
-  unint **nnk;
-  real **dk;
-  
-  nnk = (unint**)calloc(pm, sizeof(*nnk));
-  dk = (real**)calloc(pm, sizeof(*dk));
-  for(i=0; i<pm; i++){
-    nnk[i] = (unint*)calloc(K, sizeof(**nnk));
-    dk[i] = (real*)calloc(K, sizeof(**dk));
-  }
-
   int threadMax = omp_get_max_threads();
   printf("number of threads = %d \n",threadMax);
 
   if(runBrute){
-    unint *NNsBrute = (unint*)calloc( pm, sizeof(*NNsBrute) );
+    NNsPar = (unint*)calloc( pm, sizeof(*NNsPar) );
     real *dToNNs = (real*)calloc( pm, sizeof(*dToNNs) );;
     gettimeofday(&tvB,NULL);
-    brutePar(x,q,NNsBrute,dToNNs);
+    brutePar(x,q,NNsPar,dToNNs);
     gettimeofday(&tvE,NULL);
     double bruteTime = timeDiff(tvB,tvE);
-    printf("brute time elapsed = %6.4f \n", bruteTime );
+    printf("brute time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
     if(outFile)
       writeDoubs(1,outFile,bruteTime);
-    free(NNsBrute);
+    free(NNsPar);
     free(dToNNs);
   }
 
- 
-  matrix rE;
-  rep *riE = (rep*)calloc( CPAD(numReps), sizeof(*riE) );
-  
-  gettimeofday(&tvB,NULL);
-  buildOneShot(x, &rE, riE, numReps, s);
-  gettimeofday(&tvE,NULL);
-  double buildTime =  timeDiff(tvB,tvE);
-  printf("one-shot build time elapsed = %6.4f \n", buildTime );
+  testHam(x,q);
 
-  gettimeofday(&tvB,NULL);
-  searchOneShotK(q, x, rE, riE, nnk, K);
-  gettimeofday(&tvE,NULL);
-  double searchTime =  timeDiff(tvB,tvE);
-  printf("one-shot search time elapsed = %6.4f \n", searchTime );
-
-  double ol = evalApproxK(q, x, nnk, K);
-  
-  if(outFile)
-    writeDoubs(4,outFile,(double)2*numReps,(double)n,ol,(double)K);
-
-  free(rE.mat);
-  for(i=0; i<rE.pr; i++)
-    free(riE[i].lr);
-  free(riE);
-  for(i=0; i<pm; i++)
-    free(nnk[i]);
-  free(nnk);
-  
   free(x.mat);
   free(q.mat);
   return 0;
 }
 
 
-/* void testHam(matrix x, matrix q){ */
-/*   matrix r; */
-/*   unint bitLength = 64; */
-/*   unint batchSize = 10; //num queries to process at once */
-/*   struct timeval tvB, tvE; */
-  
-/*   unint i, j, k, l, p; */
-/*   real *repWidth = (real*)calloc(bitLength, sizeof(*repWidth)); */
-/*   unsigned long *bits = (unsigned long*)calloc(x.pr, sizeof(*bits)); */
-/*   unsigned long *qb = (unsigned long*)calloc(q.pr, sizeof(*qb)); */
-  
-/*   buildBit(x, &r, repWidth, bits, bitLength); */
-/*   getBitRep(q, r, repWidth, qb); */
-  
-/*   unint **nnCorrect = (unint**)calloc(q.pr, sizeof(*nnCorrect)); */
-/*   real **dT = (real**)calloc(q.pr, sizeof(*dT)); */
-/*   for(i=0; i<q.pr; i++){ */
-/*     nnCorrect[i] = (unint*)calloc(K, sizeof(**nnCorrect)); */
-/*     dT[i] = (real*)calloc(K, sizeof(**dT)); */
-/*   } */
+void testHam(matrix x, matrix q){
+  matrix r;
+  unint batchSize = 10; //num queries to process at once
+  //struct timeval tvB, tvE;
+  unint nwords = nbits/32;
 
-/*   bruteK(x, q, nnCorrect, dT, K); */
+  unint i, j, k, l, p;
+  real *repWidth = (real*)calloc(nbits, sizeof(*repWidth));
+  uint32_t **xb = (uint32_t**)calloc(x.pr, sizeof(*xb));
+  uint32_t **qb = (uint32_t**)calloc(q.pr, sizeof(*qb));
   
-/*   for(i=0; i<64; i++){ */
-    
-/*     //    searchBit(bits, qb, x.r, q.r, i, lNNs); */
-/*     long col = 0; */
-/*     long avg = 0; */
-/* #pragma omp parallel for private(k,l) reduction(+:col,avg)  */
-/*     for(j=0; j<q.r/batchSize; j++){ */
-/*       intList *lNNs = (intList*)calloc(batchSize, sizeof(*lNNs)); */
-/*       for(k=0; k<batchSize; k++) */
-/* 	createList(&lNNs[k]); */
+  for(i=0; i<x.pr; i++)
+    xb[i] = (uint32_t*)calloc(nwords, sizeof(**xb));
+  for(i=0; i<q.pr; i++)
+    qb[i] = (uint32_t*)calloc(nwords, sizeof(**qb));
+ 
+  buildBit(x, &r, repWidth, xb, nbits);
+  getBitRep(q, r, repWidth, qb, nbits);
+  
+  unint **nnCorrect = (unint**)calloc(q.pr, sizeof(*nnCorrect));
+  real **dT = (real**)calloc(q.pr, sizeof(*dT));
+  for(i=0; i<q.pr; i++){
+    nnCorrect[i] = (unint*)calloc(K, sizeof(**nnCorrect));
+    dT[i] = (real*)calloc(K, sizeof(**dT));
+  }
+
+  bruteK(x, q, nnCorrect, dT, K);
+  
+  for(i=0; i<32; i++){
+    long col = 0;
+    long avg = 0;
+#pragma omp parallel for private(k,l) reduction(+:col,avg) 
+    for(j=0; j<q.r/batchSize; j++){
+      intList *lNNs = (intList*)calloc(batchSize, sizeof(*lNNs));
+      for(k=0; k<batchSize; k++)
+	createList(&lNNs[k]);
       
-/*       searchBit(bits, &qb[j*batchSize], x.r, batchSize, i, lNNs); */
+      searchBit(xb, &qb[j*batchSize], x.r, batchSize, i, lNNs, nbits);
    
-/*       for(p=0; p<batchSize; p++){ */
-/* 	for(k=0; k<K; k++){ */
-/* 	  for(l=0; l<lNNs[p].len; l++){ */
-/* 	    col += (nnCorrect[j*batchSize+p][k] == lNNs[p].x[l]); */
-/* 	  } */
-/* 	} */
-/* 	avg += lNNs[p].len; */
-/*       } */
+      for(p=0; p<batchSize; p++){
+	for(k=0; k<K; k++){
+	  for(l=0; l<lNNs[p].len; l++){
+	    col += (nnCorrect[j*batchSize+p][k] == lNNs[p].x[l]);
+	  }
+	}
+	avg += lNNs[p].len;
+      }
 
-/*       for(k=0; k<batchSize; k++) */
-/* 	destroyList(&lNNs[k]); */
-/*       free(lNNs); */
-/*     } */
+      for(k=0; k<batchSize; k++)
+	destroyList(&lNNs[k]);
+      free(lNNs);
+    }
     
-/*     printf("correct OL %d: %6.2f / %d \n", i, ((double)col)/((double)q.r),K); */
-/*     printf("total OL %d: %6.2f\n", i, ((double)avg)/((double)q.r)); */
-/*     if(outFile) */
-/*       writeDoubs(5, outFile, (double)i, ((double)avg)/((double)q.r), (double)x.r, ((double)col)/((double)q.r), (double)K); */
+    printf("correct OL %d: %6.2f / %d \n", i, ((double)col)/((double)q.r),K);
+    printf("total OL %d: %6.2f\n", i, ((double)avg)/((double)q.r));
+    if(outFile)
+      writeDoubs(5, outFile, (double)nbits, ((double)avg)/((double)q.r), (double)x.r, ((double)col)/((double)q.r), (double)K );
 
-/*   } */
+  }
 
-/*   for(i=0; i<q.pr; i++){ */
-/*     free(nnCorrect[i]); free(dT[i]); } */
-/*   free(nnCorrect); free(dT); */
-/*   // free(lNNs); */
-/*   free(bits); */
-/*   free(qb); */
-/*   free(repWidth); */
-/*   free(r.mat); */
-/* } */
+  for(i=0; i<q.pr; i++){
+    free(nnCorrect[i]); free(dT[i]); }
+  free(nnCorrect); free(dT);
+  // free(lNNs);
+  for(i=0; i<x.pr; i++)
+    free(xb[i]);
+  free(xb);
+  for(i=0; i<q.pr; i++)
+    free(qb[i]);
+  free(qb);
+  free(repWidth);
+  free(r.mat);
+}
 
 
 void parseInput(int argc, char **argv){
   int i=1;
   if(argc <= 1){
-    printf("\nusage: \n  testRBC -f datafile (bin) -n numPts (DB) -m numQueries -d dim -r numReps -s numPtsPerRep [-D rDim] [-o outFile] [-b] [-k neighbs]\n\n");
+    printf("\nusage: \n  testRBC -f datafile (bin) -n numPts (DB) -m numQueries -d dim -r numReps -s numPtsPerRep [-l nbits] [-D rDim] [-o outFile] [-b] [-k neighbs]\n\n");
     printf("\tdatafile     = binary file containing the data\n");
     printf("\tnumPts       = size of database\n");
     printf("\tnumQueries   = number of queries\n");
@@ -196,6 +169,7 @@ void parseInput(int argc, char **argv){
     printf("\toutFile      = output file (optional); stored in text format\n");
     printf("\trDim         = reduced dimensionality\n"); 
     printf("\tneighbs      = num neighbors\n"); 
+    printf("\tnbits        = num bits (default is 32)\n"); 
     printf("\n\n");
     exit(0);
   }
@@ -221,6 +195,8 @@ void parseInput(int argc, char **argv){
       outFile = argv[++i];
     else if(!strcmp(argv[i], "-k"))
       K = atoi(argv[++i]);
+    else if(!strcmp(argv[i], "-l"))
+      nbits = atoi(argv[++i]);
     else{
       fprintf(stderr,"%s : unrecognized option.. exiting\n",argv[i]);
       exit(1);
@@ -233,6 +209,11 @@ void parseInput(int argc, char **argv){
     exit(1);
   }
   
+  if( nbits % 32){
+    fprintf(stderr, "nbits must be a multiple of 32.. exiting\n");
+    exit(1);
+  }
+
   if( !D )
     D = d;
   /* if(numReps>n){ */
