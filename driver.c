@@ -85,7 +85,8 @@ int main(int argc, char**argv){
   rep *riE = (rep*)calloc( CPAD(numReps), sizeof(*riE) );
   
   gettimeofday(&tvB,NULL);
-  buildOneShot(x, &rE, riE, numReps, s);
+  //buildOneShot(x, &rE, riE, numReps, s);
+  buildExactExp(x,&rE, riE, numReps,10); 
   gettimeofday(&tvE,NULL);
   double buildTime =  timeDiff(tvB,tvE);
   printf("one-shot build time elapsed = %6.4f \n", buildTime );

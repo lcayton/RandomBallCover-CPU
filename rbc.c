@@ -162,6 +162,60 @@ void buildExact(matrix x, matrix *r, rep *ri, unint numReps){
   free(repID);
 }
 
+//Experimental build exact method
+//ol == overlap factor
+void buildExactExp(matrix x, matrix *r, rep *ri, unint numReps, unint ol){
+  unint n = x.r;
+  unint i,j;
+
+  r->c=x.c; r->pc=x.pc; r->r=numReps; r->pr=CPAD(numReps); r->ld=r->pc;
+  r->mat = (real*)calloc( r->pc*r->pr, sizeof(*r->mat) );
+ 
+  //pick r random reps
+  pickReps(x,r);
+
+  //Compute the rep for each x
+  unint **repID = (unint**)calloc(x.pr, sizeof(*repID));
+  real **dToReps = (real**)calloc(x.pr, sizeof(*dToReps));
+  for(i=0; i<x.pr; i++){
+    repID[i] = (unint*)calloc(ol, sizeof(**repID));
+    dToReps[i] = (real*)calloc(ol, sizeof(**dToReps));
+  }
+
+  bruteKHeap(*r,x,repID,dToReps,ol);
+
+  //gather the rep info & store it in struct
+  for(i=0; i<numReps; i++){
+    ri[i].len = 0;
+    ri[i].radius = 0;
+  }    
+  
+  for(i=0; i<n; i++){
+    for(j=0; j<ol; j++){
+      ri[repID[i][j]].radius = MAX( dToReps[i][j], ri[repID[i][j]].radius );
+      ri[repID[i][j]].len++;
+    }
+  }
+  
+  for(i=0; i<numReps; i++){
+    ri[i].lr = (unint*)calloc(ri[i].len, sizeof(*ri[i].lr));
+  }
+  
+  unint *tempCount = (unint*)calloc(numReps, sizeof(*tempCount));
+  for(i=0; i<n; i++){
+    for(j=0; j<ol; j++)
+      ri[repID[i][j]].lr[tempCount[repID[i][j]]++] = i;
+  }
+
+  for(i=0; i<x.pr; i++){
+    free(repID[i]);
+    free(dToReps[i]);
+  }
+  free(dToReps);
+  free(repID);
+  free(tempCount);
+}
+
 
 //Exact 1-NN search with the RBC.
 void searchExact(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
@@ -444,7 +498,7 @@ void buildOneShot(matrix x, matrix *r, rep *ri, unint numReps, unint s){
   }
 
   //need to find the radius such that each rep contains s points
-  bruteK(x,*r,repID,dToNNs,s);
+  bruteKHeap(x,*r,repID,dToNNs,s);
   
   for( i=0; i<r->pr; i++){
     ri[i].lr = (unint*)calloc(ps, sizeof(*ri[i].lr));

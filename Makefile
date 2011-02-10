@@ -1,7 +1,7 @@
 CC=gcc
 #other flags -O3 -funroll-loops  -msse -g
 CCFLAGS= -fopenmp -O3 -funroll-loops -msse -Wall
-SOURCES= exactDriver.c utils.c brute.c rbc.c #hashDriver.c driver.c
+SOURCES= compare_build.c utils.c brute.c rbc.c #hashDriver.c exactDriver.c driver.c
 LINKFLAGS= -lgsl -lgslcblas -lm
 OBJECTS=$(SOURCES:.c=.o)
 EXECUTABLE=testCRBC
