@@ -13,15 +13,16 @@ void searchExact(matrix,matrix,matrix,rep*,unint*);
 void searchExactK(matrix,matrix,matrix,rep*,unint**,unint);
 void searchExactManyCores(matrix,matrix,matrix,rep*,unint*);
 void searchExactManyCoresK(matrix,matrix,matrix,rep*,unint**,unint);
-
+void searchExactManyCores2(matrix q, matrix x, matrix r, rep *ri, unint *NNs);
 void buildOneShot(matrix,matrix*,rep*,unint,unint);
 void searchOneShot(matrix,matrix,matrix,rep*,unint*);
+void searchOneShot2(matrix q, matrix x, matrix r, rep *ri, unint *NNs);
 void searchOneShotK(matrix,matrix,matrix,rep*,unint**,unint);
 void pickReps(matrix,matrix*);
 
 void searchStats(matrix,matrix,matrix,rep*,double*);
 
 void buildExactExp(matrix x, matrix *r, rep *ri, unint numReps, unint ol);
-
+void reshuffleX(matrix y, matrix x, rep *ri, unint numReps);
 
 #endif

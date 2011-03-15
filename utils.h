@@ -18,6 +18,7 @@ void printCharMat(charMatrix);
 void printIntMat(intMatrix);
 void printVector(real*,unint);
 void copyVector(real*,real*,unint);
+void copyRow(matrix *x, matrix *y, unint xi, unint yi);
 real distVec(matrix,matrix,unint,unint);
 double timeDiff(struct timeval,struct timeval);
 void copyMat(matrix*,matrix*);

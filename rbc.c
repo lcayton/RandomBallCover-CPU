@@ -124,7 +124,8 @@ void searchBit(uint32_t **xb, uint32_t **qb, unint n, unint m, unint maxHamm , i
 //Builds the RBC for exact (1- or K-) NN search.
 void buildExact(matrix x, matrix *r, rep *ri, unint numReps){
   unint n = x.r;
-  unint i;
+  unint i, j;
+  unint longestLength = 0;
 
   r->c=x.c; r->pc=x.pc; r->r=numReps; r->pr=CPAD(numReps); r->ld=r->pc;
   r->mat = (real*)calloc( r->pc*r->pr, sizeof(*r->mat) );
@@ -142,21 +143,49 @@ void buildExact(matrix x, matrix *r, rep *ri, unint numReps){
   for(i=0; i<numReps; i++){
     ri[i].len = 0;
     ri[i].radius = 0;
-  }    
+}    
   
   for(i=0; i<n; i++){
     ri[repID[i]].radius = MAX( dToReps[i], ri[repID[i]].radius );
     ri[repID[i]].len++;
   }
   
+  unint **tempI = (unint**)calloc(numReps, sizeof(*tempI));
+  real **tempD = (real**)calloc(numReps, sizeof(*tempD));
   for(i=0; i<numReps; i++){
+    tempI[i] = (unint*)calloc(ri[i].len, sizeof(**tempI));
+    tempD[i] = (real*)calloc(ri[i].len, sizeof(**tempD));
     ri[i].lr = (unint*)calloc(ri[i].len, sizeof(*ri[i].lr));
+    ri[i].dists = (real*)calloc(ri[i].len, sizeof(*ri[i].dists));
+    longestLength = MAX( longestLength, ri[i].len );
   }
   
   unint *tempCount = (unint*)calloc(numReps, sizeof(*tempCount));
-  for(i=0; i<n; i++)
-    ri[repID[i]].lr[tempCount[repID[i]]++] = i;
+  for(i=0; i<n; i++){
+    tempI[repID[i]][tempCount[repID[i]]] = i;
+    tempD[repID[i]][tempCount[repID[i]]++] = dToReps[i];
+    //    ri[repID[i]].dists[tempCount[repID[i]]++] = dToReps[i];
+    //    ri[repID[i]].lr[tempCount[repID[i]]++] = i;
+  }
 
+  //  for(i=0; i<numReps; i++)
+  //    tempCount[i]=0;
+
+  size_t *p = (size_t*)calloc(longestLength, sizeof(*p));
+  for(i=0; i<numReps; i++){
+    gsl_sort_float_index( p, tempD[i], 1, ri[i].len );
+    for(j=0; j<ri[i].len; j++){
+      ri[i].dists[j] = tempD[i][p[j]];
+      ri[i].lr[j] = tempI[i][p[j]];
+    }
+  }
+  free(p);
+  for(i=0;i<numReps; i++){
+    free(tempI[i]);
+    free(tempD[i]);
+  }
+  free(tempI);
+  free(tempD);
   free(tempCount);
   free(dToReps);
   free(repID);
@@ -166,11 +195,23 @@ void buildExact(matrix x, matrix *r, rep *ri, unint numReps){
 //ol == overlap factor
 void buildExactExp(matrix x, matrix *r, rep *ri, unint numReps, unint ol){
   unint n = x.r;
-  unint i,j;
+  unint i,j,k;
 
   r->c=x.c; r->pc=x.pc; r->r=numReps; r->pr=CPAD(numReps); r->ld=r->pc;
   r->mat = (real*)calloc( r->pc*r->pr, sizeof(*r->mat) );
- 
+
+  //this initialization encourages the OS to put the r matrix in a "good"
+  //portion of memory.  
+#pragma omp parallel for private(j,k)
+  for(i=0; i<numReps/CL; i++){
+    for(j=0; j<CL; j++){
+      for(k=0; k<r->c; k++)
+	r->mat[IDX(i*CL+j, k, r->ld)] = 0.1;
+      for(k=r->c; k<r->pc; k++)
+	r->mat[IDX(i*CL+j, k, r->ld)] = 0;
+    }
+  }
+
   //pick r random reps
   pickReps(x,r);
 
@@ -217,6 +258,24 @@ void buildExactExp(matrix x, matrix *r, rep *ri, unint numReps, unint ol){
 }
 
 
+// Reshuffles X and stores the result in Y.  This
+// improves memory locality.
+void reshuffleX(matrix y, matrix x, rep *ri, unint numReps){
+  unint i,j;
+
+  ri[0].start = 0;
+  for( i=1; i<numReps; i++ )
+    ri[i].start = ri[i-1].start + ri[i-1].len;
+  unint t;
+  //#pragma omp parallel for private(j,t)
+  for( i=0; i<numReps; i++ ){
+    t = ri[i].start;
+    for( j=0; j<ri[i].len; j++ )
+      copyRow( &y, &x, t++, ri[i].lr[j] );
+  }
+}
+
+
 //Exact 1-NN search with the RBC.
 void searchExact(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
   unint i, j, k;
@@ -250,11 +309,15 @@ void searchExact(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
       for(k=0; k<CL; k++){
 	d[tn][k][j] = distVec(q, r, row+k, j);
 	if(d[tn][k][j] < minDist[k]){
-	  minDist[k] = d[tn][k][j];
+	  minDist[k] = d[tn][k][j]; //gamma
 	  minID[k] = j;
 	}
       }
     }
+
+    for( j=0; j<CL; j++ )
+      dToReps[row+j] = minDist[j];
+
     for(j=0; j<r.r; j++ ){
       for(k=0; k<CL; k++ ){
 	real temp = d[tn][k][j];
@@ -385,11 +448,16 @@ void searchExactManyCores(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
   unint *repID = (unint*)calloc(q.pr, sizeof(*repID));
   real *dToReps = (real*)calloc(q.pr, sizeof(*dToReps));
   intList *toSearch = (intList*)calloc(r.pr, sizeof(*toSearch));
+  struct timeval tvB,tvE;
   for(i=0;i<r.pr;i++)
     createList(&toSearch[i]);
-  
+
+  gettimeofday(&tvB,NULL);
   brutePar(r,q,repID,dToReps);
-  
+  gettimeofday(&tvE,NULL);
+  printf("....exact[pt1] time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+
+  gettimeofday(&tvB,NULL);
 #pragma omp parallel for private(j,k)
   for(i=0; i<r.pr/CL; i++){
     unint row = CL*i;
@@ -414,14 +482,81 @@ void searchExactManyCores(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
     }
   }
 
+  gettimeofday(&tvE,NULL);
+  printf("....exact[pt2] time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+
+
+  //Most of the time is spent in this method
+  gettimeofday(&tvB,NULL);
   bruteList(x,q,ri,toSearch,r.r,NNs,dToReps);
-  
+  gettimeofday(&tvE,NULL);
+  printf("....exact[pt3] time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+
+
   for(i=0;i<r.pr;i++)
     destroyList(&toSearch[i]);
   free(toSearch);
   free(repID);
   free(dToReps);
 }
+
+void searchExactManyCores2(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
+  unint i, j, k;
+  unint *repID = (unint*)calloc(q.pr, sizeof(*repID));
+  real *dToReps = (real*)calloc(q.pr, sizeof(*dToReps));
+  intList *toSearch = (intList*)calloc(r.pr, sizeof(*toSearch));
+  struct timeval tvB,tvE;
+  for(i=0;i<r.pr;i++)
+    createList(&toSearch[i]);
+
+  gettimeofday(&tvB,NULL);
+  brutePar(r,q,repID,dToReps);
+  gettimeofday(&tvE,NULL);
+  printf("....exact[pt1] time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+
+  gettimeofday(&tvB,NULL);
+#pragma omp parallel for private(j,k)
+  for(i=0; i<r.pr/CL; i++){
+    unint row = CL*i;
+    real temp[CL];
+    
+    for(j=0; j<q.r; j++ ){
+      for(k=0; k<CL; k++){
+	temp[k] = distVec( q, r, j, row+k );
+      }
+      for(k=0; k<CL; k++){
+	//dToRep[j] is current UB on dist to j's NN
+	//temp - ri[i].radius is LB to dist belonging to rep i
+	if( row+k<r.r && dToReps[j] >= temp[k] - ri[row+k].radius && 3.0*dToReps[j] >= temp[k] )
+	  addToList(&toSearch[row+k], j); //need to search rep 
+      }
+    }
+    for(j=0;j<CL;j++){
+      if(row+j<r.r){
+	while(toSearch[row+j].len % CL != 0)
+	  addToList(&toSearch[row+j],DUMMY_IDX);	
+      }
+    }
+  }
+
+  gettimeofday(&tvE,NULL);
+  printf("....exact[pt2] time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+
+
+  //Most of the time is spent in this method
+  gettimeofday(&tvB,NULL);
+  bruteList2(x,q,ri,toSearch,r.r,NNs,dToReps);
+  gettimeofday(&tvE,NULL);
+  printf("....exact[pt3] time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+
+
+  for(i=0;i<r.pr;i++)
+    destroyList(&toSearch[i]);
+  free(toSearch);
+  free(repID);
+  free(dToReps);
+}
+
 
 
 // Exact k-NN search with the RBC.  This version works better on computers
@@ -525,11 +660,42 @@ void searchOneShot(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
   real *dToReps = (real*)calloc(q.pr, sizeof(*dToReps));
   
   // Determine which rep each query is closest to.
+  struct timeval tvB, tvE;
+  gettimeofday(&tvB,NULL);
   brutePar(r,q,repID,dToReps);
-  
+  gettimeofday(&tvE,NULL);
+  printf("....one-shot[pt1] time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+
+  gettimeofday(&tvB,NULL);
   // Search that rep's ownership list.
   bruteMap(x,q,ri,repID,NNs,dToReps);
+  gettimeofday(&tvE,NULL);
+  printf("....one-shot[pt2] time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
   
+
+  free(repID);
+  free(dToReps);
+}
+
+
+void searchOneShot2(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
+  unint *repID = (unint*)calloc(q.pr, sizeof(*repID));
+  real *dToReps = (real*)calloc(q.pr, sizeof(*dToReps));
+  
+  // Determine which rep each query is closest to.
+  struct timeval tvB, tvE;
+  gettimeofday(&tvB,NULL);
+  brutePar2(r,q,repID,dToReps);
+  gettimeofday(&tvE,NULL);
+  printf("....one-shot[pt1] time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+
+  gettimeofday(&tvB,NULL);
+  // Search that rep's ownership list.
+  bruteMap2(x,q,ri,repID,NNs,dToReps, r.r);
+  gettimeofday(&tvE,NULL);
+  printf("....one-shot[pt2] time elapsed = %6.4f \n", timeDiff(tvB,tvE) );
+  
+
   free(repID);
   free(dToReps);
 }

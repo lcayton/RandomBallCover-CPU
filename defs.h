@@ -99,7 +99,9 @@ typedef struct {
 
 typedef struct { // struct for a representative point
   unint* lr; //list of owned DB points
+  real* dists; //dist to the owned points
   unint len;  //length of lr
+  unint start; //used in the re-ordered version of search
   real radius;
 } rep;
 
@@ -110,10 +112,13 @@ typedef struct { //very simple list data type
   unint maxLen;
 } intList;
 
+
+
 typedef struct { //array-based heap element
   unint id;
   real val;
 } heapEl; 
+
 
 typedef struct { //array-based heap
   heapEl *h;

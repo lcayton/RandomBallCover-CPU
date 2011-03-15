@@ -107,6 +107,14 @@ void copyVector(real *x, real *y, unint d){
 }
 
 
+void copyRow(matrix *x, matrix *y, unint xi, unint yi){
+  unint i;
+  
+  for(i=0; i<x->c; i++)
+    x->mat[IDX( xi, i, x->ld )] = y->mat[IDX( yi, i, y->ld )];
+}
+
+
 void copyMat(matrix *x, matrix *y){
   unint i,j;
   

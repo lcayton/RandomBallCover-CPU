@@ -53,8 +53,9 @@ int main(int argc, char**argv){
   orgData(data, (n+m), d, x, q);
   free(data);
   
-  unint *NNs = calloc(pm, sizeof(*NNs));; 
-
+  unint *NNs = calloc(pm, sizeof(*NNs));
+  unint *NNs2 = calloc(pm, sizeof(*NNs2));
+  real *dToNNs = (real*)calloc( pm, sizeof(*dToNNs) );;
   int threadMax = omp_get_max_threads();
   printf("number of threads = %d \n",threadMax);
 
@@ -83,10 +84,21 @@ int main(int argc, char**argv){
   printf("exact build time elapsed = %6.4f \n", buildTime );
 
   gettimeofday(&tvB,NULL);
-  searchExactManyCores(q, x, rE, riE, NNs);
+  searchExact(q, x, rE, riE, NNs);
   gettimeofday(&tvE,NULL);
   double searchTime =  timeDiff(tvB,tvE);
-  printf("one-shot search time elapsed = %6.4f \n", searchTime );
+  printf("exact search time elapsed = %6.4f \n", searchTime );
+
+  gettimeofday(&tvB,NULL);
+  brutePar(x, q,  NNs2, dToNNs);
+  gettimeofday(&tvE,NULL);
+  searchTime =  timeDiff(tvB,tvE);
+  printf("bruteh time elapsed = %6.4f \n", searchTime );
+
+  for(i=0;i<m;i++){
+    if(NNs[i]!=NNs2[i])
+      printf("%d %d %d %6.2f %6.2f \n",i,NNs[i],NNs2[i],distVec(x,q,NNs[i],i),distVec(x,q,NNs2[i],i));
+  }
 
   double avgDists;
   searchStats(q,x,rE,riE,&avgDists);
