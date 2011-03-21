@@ -4,6 +4,7 @@
 #include<float.h>
 #include<limits.h>
 #include<math.h>
+#include<stdint.h>
 
 #define FLOAT_TOL 1e-7
 #define VEC_LEN 4 
@@ -19,14 +20,18 @@
 
 // The following macros define the distance measure.
 //#define DIST(i,j) ( fabs((i)-(j)) )  // L_1
-// This macro returns the distance for a single coordinate.
+//#define DIST_EXP(x) ( (x) ) //L_1
+//#define DIST_ROOT(x) ( (x) ) //L_1
 
-//#define DIST_EXP(x) ( (x) ); //L_1
-// This macro defines the exponent applied to the summed DIST values.
+// DIST returns the distance for a single coordinate.
+// DIST_EXP defines the exponent applied to the summed DIST values.
+// DIST_ROOT is the inverse of DIST_EXP
+
 
 // L_2 versions of the above macros:
 #define DIST(i,j) ( ( (i)-(j) )*( (i)-(j) ) )  // L_2
-#define DIST_EXP(x) ( sqrt(x) ); //L_2
+#define DIST_EXP(x) ( sqrt(x) ) //L_2
+#define DIST_ROOT(x) ( (x)*(x) ) //L_2
 
 // Format that the data is manipulated in:
 typedef float real;
@@ -35,7 +40,7 @@ typedef float real;
 
 // To switch to double precision, comment out the above 
 // three lines and uncomment the following three lines.   
-// You should also change the vector length to 2.
+// You should also change the VEC_LEN to 2.
 
 //typedef double real;
 //#define MAX_REAL DBL_MAX
@@ -64,8 +69,7 @@ typedef float real;
 
 #define GETBIT(i) ( 1ul<<(i) )
 
-typedef unsigned int unint;
-
+typedef uint32_t unint;
 
 typedef struct {
   real *mat;

@@ -1,5 +1,5 @@
 /* This file is part of the Random Ball Cover (RBC) library.
- * (C) Copyright 2010, Lawrence Cayton [lcayton@tuebingen.mpg.de]
+ * (C) Copyright 2011, Lawrence Cayton [lcayton@tuebingen.mpg.de]
  */
 
 #ifndef UTILS_C
@@ -127,28 +127,9 @@ void copyMat(matrix *x, matrix *y){
 }
 
 
-real distVec(matrix x, matrix y, unint k, unint l){
-  unint i,j;
-  real ans[VEC_LEN];
-  real sum=0;
-
-  for(i=0; i<VEC_LEN; i++)
-    ans[i]=0;
-  
-  for(i=0; i<x.pc; i+=VEC_LEN){
-    for(j=0; j<VEC_LEN; j++)
-      ans[j] += DIST( x.mat[IDX(k,i+j,x.ld)], y.mat[IDX(l,i+j,x.ld)] );
-  }
-  for(i=0; i<VEC_LEN; i++)
-    sum += ans[i];
-  return DIST_EXP(sum);
-}
-
-
 double timeDiff(struct timeval start, struct timeval end){
   return (double)(end.tv_sec+end.tv_usec/1e6 - start.tv_sec - start.tv_usec/1e6); 
 }
-
 
 /* ********************
    Implementation of a basic resizable list data type (see defs.h).
@@ -291,50 +272,20 @@ void heapSort(heap *hp, unint *sortInds, real *sortVals){
 }
 
 
-// Basic bit counting routine, based on
-// http://www-graphics.stanford.edu/~seander/bithacks.html
-unint countBits(unsigned long b){
-  static const unsigned char bitTable16[65536] = 
-    {
-#   define B2(n) n,     n+1,     n+1,     n+2
-#   define B4(n) B2(n), B2(n+1), B2(n+1), B2(n+2)
-#   define B6(n) B4(n), B4(n+1), B4(n+1), B4(n+2)
-#   define B8(n) B6(n), B6(n+1), B6(n+1), B6(n+2)
-#   define B10(n) B8(n), B8(n+1), B8(n+1), B8(n+2)
-#   define B12(n) B10(n), B10(n+1), B10(n+1), B10(n+2)
-#   define B14(n) B12(n), B12(n+1), B12(n+1), B12(n+2)
-      B14(0), B14(1), B14(1), B14(2)
-    };
-  
-  return bitTable16[b & 0xffff] +
-    bitTable16[ (b >> 16) & 0xffff ] +
-    bitTable16[ (b >> 32) & 0xffff ] +
-    bitTable16[ (b >> 48) & 0xffff ];
-  
+/* Helper methods for working with the matrix struct */
+
+void initMat(matrix *x, unint r, unint c){
+  x->r = r;
+  x->pr = CPAD(r);
+  x->c = c;
+  x->pc = PAD(c);
+  x->ld = x->pc;
 }
 
 
-unint hamm(uint32_t *x, uint32_t *y, unint nwords){
- /*  static const unsigned char bitTable16[65536] =  */
-/*     { */
-/* #define B2(n) n,     n+1,     n+1,     n+2 */
-/* #define B4(n) B2(n), B2(n+1), B2(n+1), B2(n+2) */
-/* #define B6(n) B4(n), B4(n+1), B4(n+1), B4(n+2) */
-/* #define B8(n) B6(n), B6(n+1), B6(n+1), B6(n+2) */
-/* #define B10(n) B8(n), B8(n+1), B8(n+1), B8(n+2) */
-/* #define B12(n) B10(n), B10(n+1), B10(n+1), B10(n+2) */
-/* #define B14(n) B12(n), B12(n+1), B12(n+1), B12(n+2) */
-/*       B14(0), B14(1), B14(1), B14(2) */
-/*     }; */
-  
-  /* return bitTable16[b & 0xffff] + */
-  /*   bitTable16[ (b >> 16) & 0xffff ] + */
-  /*   bitTable16[ (b >> 32) & 0xffff ] + */
-  /*   bitTable16[ (b >> 48) & 0xffff ]; */
-  unint i;
-  unint ans=0;
-  for(i=0; i<nwords; i++)
-    ans+=__builtin_popcount(x[i]^y[i]);
-  return ans;
+size_t sizeOfMat(matrix x){
+  return x.pr*x.pc;
 }
+
+
 #endif

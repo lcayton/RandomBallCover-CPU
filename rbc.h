@@ -4,25 +4,19 @@
 #include<stdint.h>
 #include "defs.h"
 
-void furthestFirst(matrix,matrix);
-void buildBit(matrix,matrix*,real*,uint32_t**,unint);
-void getBitRep(matrix, matrix, real*, uint32_t**,unint);
-void searchBit(uint32_t**, uint32_t**, unint, unint, unint, intList*,unint);
 void buildExact(matrix,matrix*,rep*,unint);
-void searchExact(matrix,matrix,matrix,rep*,unint*);
-void searchExactK(matrix,matrix,matrix,rep*,unint**,unint);
-void searchExactManyCores(matrix,matrix,matrix,rep*,unint*);
-void searchExactManyCoresK(matrix,matrix,matrix,rep*,unint**,unint);
-void searchExactManyCores2(matrix q, matrix x, matrix r, rep *ri, unint *NNs);
+void searchExact(matrix,matrix,matrix,rep*,unint*,real*);
+void searchExactK(matrix,matrix,matrix,rep*,unint**,real**,unint);
+void searchExactManyCores(matrix,matrix,matrix,rep*,unint*,real*);
+void searchExactManyCoresK(matrix,matrix,matrix,rep*,unint**,real**,unint);
+
 void buildOneShot(matrix,matrix*,rep*,unint,unint);
 void searchOneShot(matrix,matrix,matrix,rep*,unint*);
-void searchOneShot2(matrix q, matrix x, matrix r, rep *ri, unint *NNs);
 void searchOneShotK(matrix,matrix,matrix,rep*,unint**,unint);
+
 void pickReps(matrix,matrix*);
-
 void searchStats(matrix,matrix,matrix,rep*,double*);
-
-void buildExactExp(matrix x, matrix *r, rep *ri, unint numReps, unint ol);
 void reshuffleX(matrix y, matrix x, rep *ri, unint numReps);
 
+void freeRBC(matrix r, rep *ri);
 #endif

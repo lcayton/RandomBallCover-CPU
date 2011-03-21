@@ -9,6 +9,8 @@
 #include "utils.h" 
 #include "brute.h"
 #include "rbc.h"
+#include "dists.h"
+
 void testHam(matrix,matrix);
 void parseInput(int,char**);
 void readData(char*,unint,unint,real*);
@@ -19,101 +21,135 @@ double evalApproxK(matrix,matrix,unint**,unint);
 void writeDoubs(int, char*, double,...);
 
 char *dataFile, *outFile;
-unint n=0, m=0, d=0, numReps=0, s=0, D=0, runBrute=0;
+unint n=0, m=0, d=0, numReps=0, D=0, runBrute=0;
 unint K = 1;
 
 int main(int argc, char**argv){
   real *data;
   matrix x, q;
-  unint i;
+  unint i,j;
   struct timeval tvB,tvE;
 
   printf("********************************\n");
   printf("RANDOM BALL COVER -- CPU version\n");
   printf("********************************\n");
-
+  
   parseInput(argc,argv);
 
-  unint pm = CPAD(m);
+  int threadMax = omp_get_max_threads();
+  printf("number of threads = %d \n",threadMax);
+  
   data  = (real*)calloc( (n+m)*d, sizeof(*data) );
-  x.r = n; x.c = D; x.pr = CPAD(n); x.pc = PAD(D); x.ld = x.pc;
-  q.r = m; q.c = D; q.pr = CPAD(m); q.pc = PAD(D); q.ld = q.pc;
-
-  /* x.mat = (real*)calloc( PAD(n)*PAD(d), sizeof(*(x.mat)) ); */
-  /* q.mat = (real*)calloc( PAD(m)*PAD(d), sizeof(*(q.mat)) ); */
-
-  //alocates memory in an aligned way
-  if( posix_memalign((void**)&x.mat,64,x.pr*x.pc*sizeof(*x.mat)) || 
-      posix_memalign((void**)&q.mat,64,q.pr*q.pc*sizeof(*q.mat)) ){
+  if(!data){
     fprintf(stderr, "memory allocation failure .. exiting \n");
     exit(1);
   }
+  
+  initMat( &x, n, D );
+  initMat( &q, m, D );
+  x.mat = (real*)calloc( sizeOfMat(x), sizeof(*(x.mat)) );
+  q.mat = (real*)calloc( sizeOfMat(q), sizeof(*(q.mat)) );
+  if( !x.mat || !q.mat ){
+    fprintf(stderr, "memory allocation failure .. exiting \n");
+    exit(1);
+  }
+
+  // If you are on a unix-based machine, I recommend using the following 
+  // to alocate memory in an aligned way.  
+  /* if( posix_memalign((void**)&x.mat, 64, sizeOfMat(x)*sizeof(*x.mat)) || */
+  /*     posix_memalign((void**)&q.mat, 64, sizeOfMat(q)*sizeof(*q.mat)) ){ */
+  /*   fprintf(stderr, "memory allocation failure .. exiting \n"); */
+  /*   exit(1); */
+  /* } */
   
   readData(dataFile, (n+m), d, data);
   orgData(data, (n+m), d, x, q);
   free(data);
   
-  unint *NNs = calloc(pm, sizeof(*NNs));
-  unint *NNs2 = calloc(pm, sizeof(*NNs2));
-  real *dToNNs = (real*)calloc( pm, sizeof(*dToNNs) );;
-  int threadMax = omp_get_max_threads();
-  printf("number of threads = %d \n",threadMax);
-
-  if(runBrute){
-    unint *NNsBrute = (unint*)calloc( pm, sizeof(*NNsBrute) );
-    real *dToNNs = (real*)calloc( pm, sizeof(*dToNNs) );;
-    gettimeofday(&tvB,NULL);
-    brutePar(x,q,NNsBrute,dToNNs);
-    gettimeofday(&tvE,NULL);
-    double bruteTime = timeDiff(tvB,tvE);
-    printf("brute time elapsed = %6.4f \n", bruteTime );
-    if(outFile)
-      writeDoubs(1,outFile,bruteTime);
-    free(NNsBrute);
-    free(dToNNs);
-  }
-
- 
+  unint *NNs = (unint*)calloc( m, sizeof(*NNs)); //indices of the NNs
+  real *dToNNs = (real*)calloc( m, sizeof(*dToNNs) );  //dists to the NNs
+  
   matrix rE;
   rep *riE = (rep*)calloc( CPAD(numReps), sizeof(*riE) );
   
+  
+  // ******** builds the RBC
   gettimeofday(&tvB,NULL);
   buildExact(x, &rE, riE, numReps);
   gettimeofday(&tvE,NULL);
   double buildTime =  timeDiff(tvB,tvE);
   printf("exact build time elapsed = %6.4f \n", buildTime );
 
-  gettimeofday(&tvB,NULL);
-  searchExact(q, x, rE, riE, NNs);
-  gettimeofday(&tvE,NULL);
-  double searchTime =  timeDiff(tvB,tvE);
-  printf("exact search time elapsed = %6.4f \n", searchTime );
 
-  gettimeofday(&tvB,NULL);
-  brutePar(x, q,  NNs2, dToNNs);
-  gettimeofday(&tvE,NULL);
-  searchTime =  timeDiff(tvB,tvE);
-  printf("bruteh time elapsed = %6.4f \n", searchTime );
-
-  for(i=0;i<m;i++){
-    if(NNs[i]!=NNs2[i])
-      printf("%d %d %d %6.2f %6.2f \n",i,NNs[i],NNs2[i],distVec(x,q,NNs[i],i),distVec(x,q,NNs2[i],i));
-  }
-
-  double avgDists;
-  searchStats(q,x,rE,riE,&avgDists);
+  // ******** searches the RBC
+  /* gettimeofday(&tvB,NULL); */
+  /* if( threadMax<8 ) */
+  /*   searchExact(q, x, rE, riE, NNs, dToNNs); */
+  /* else */
+  /*   searchExactManyCores(q, x, rE, riE, NNs, dToNNs); */
+  /* gettimeofday(&tvE,NULL); */
+  /* double searchTime =  timeDiff(tvB,tvE); */
+  /* printf("exact search time elapsed = %6.4f \n", searchTime ); */
 
   
-  if(outFile)
-    writeDoubs(5,outFile,(double)numReps,((double)D),buildTime,searchTime,avgDists);
+  unint **NNsK = (unint**)calloc( m, sizeof(*NNsK) );
+  for(i=0;i<m; i++)
+    NNsK[i] = (unint*)calloc(K, sizeof(**NNsK));
+  real **dNNsK = (real**)calloc( m, sizeof(*dNNsK) );
+  for(i=0; i<m; i++)
+    dNNsK[i] = (real*)calloc(K, sizeof(**dNNsK) );
 
-  free(rE.mat);
-  for(i=0; i<rE.pr; i++)
-    free(riE[i].lr);
-  free(riE);
+  gettimeofday(&tvB,NULL);
+  if( threadMax<8 )
+    searchExactK(q, x, rE, riE, NNsK, dNNsK, K);
+  else
+    searchExactManyCoresK(q, x, rE, riE, NNsK, dNNsK, K);
+  gettimeofday(&tvE,NULL);
+  double searchTime =  timeDiff(tvB,tvE);
+  printf("exact k-nn search time elapsed = %6.4f \n", searchTime );
+
+  //Uncomment the following to compute some stats about the search. 
+  /* double avgDists; */
+  /* searchStats(q,x,rE,riE,&avgDists); */
+  /* printf("avgDists = %6.2f \n", avgDists); */
+  
+
+  // ******** runs brute force search.
+  if(runBrute){
+    printf("running brute force search..\n");
+    unint **NNsBrute = (unint**)calloc( m, sizeof(*NNsBrute) );
+    real **dToNNsBrute = (real**)calloc( m, sizeof(*dToNNsBrute) );;
+    for(i=0; i<m; i++){
+      NNsBrute[i] = (unint*)calloc( m, sizeof(**NNsBrute) );
+      dToNNsBrute[i] = (real*)calloc( m, sizeof(**dToNNsBrute) );
+    }
+    gettimeofday(&tvB,NULL);
+    bruteK(x,q,NNsBrute,dToNNsBrute,K);
+    gettimeofday(&tvE,NULL);
+    double bruteTime = timeDiff(tvB,tvE);
+    printf("brute time elapsed = %6.4f \n", bruteTime );
+    for(i=0; i<q.r; i++){
+      for(j=0; j<K; j++){
+	if(NNsK[i][j] != NNsBrute[i][j])
+	  printf("%d,%d: %d %d %6.5f %6.5f \n", i, j,NNsK[i][j], NNsBrute[i][j], dNNsK[i][j], dToNNsBrute[i][j]);
+	//printf("%d: %d %d %6.5f %6.5f \n", i, NNs[i], NNsBrute[i], distVec( q, x, i, NNs[i]), distVec( q, x, i, NNsBrute[i]) );
+      }
+    }
+
+    free(NNsBrute);
+    free(dToNNsBrute);
+  }
+  
+  if(outFile)
+    writeDoubs(4,outFile,(double)numReps,((double)D),buildTime,searchTime);
+
+  
+  freeRBC( rE, riE );
   free(NNs);
+  free(dToNNs);
   free(x.mat);
   free(q.mat);
+  
   return 0;
 }
 
@@ -124,16 +160,16 @@ int main(int argc, char**argv){
 void parseInput(int argc, char **argv){
   int i=1;
   if(argc <= 1){
-    printf("\nusage: \n  testRBC -f datafile (bin) -n numPts (DB) -m numQueries -d dim -r numReps -s numPtsPerRep [-D rDim] [-o outFile] [-b] [-k neighbs]\n\n");
+    printf("\nusage: \n  testRBC -f datafile (bin) -n numPts (DB) -m numQueries -d dim -r numReps [-o outFile] [-b] [-k neighbs]\n\n");
     printf("\tdatafile     = binary file containing the data\n");
     printf("\tnumPts       = size of database\n");
     printf("\tnumQueries   = number of queries\n");
     printf("\tdim          = dimensionality\n");
     printf("\tnumReps      = number of representatives\n");
-    printf("\tnumPtsPerRep = number of points assigned to each representative\n");
     printf("\toutFile      = output file (optional); stored in text format\n");
-    printf("\trDim         = reduced dimensionality\n"); 
-    printf("\tneighbs      = num neighbors\n"); 
+    //printf("\trDim         = reduced dimensionality\n"); 
+    printf("\tneighbs      = num neighbors (optional; default is 1)\n"); 
+    printf("\n\tuse -b option to run brute force search\n");
     printf("\n\n");
     exit(0);
   }
@@ -151,8 +187,6 @@ void parseInput(int argc, char **argv){
       D = atoi(argv[++i]);
     else if(!strcmp(argv[i], "-r"))
       numReps = atoi(argv[++i]);
-    else if(!strcmp(argv[i], "-s"))
-      s = atoi(argv[++i]);
     else if(!strcmp(argv[i], "-b"))
       runBrute = 1;
     else if(!strcmp(argv[i], "-o"))
@@ -166,17 +200,16 @@ void parseInput(int argc, char **argv){
     i++;
   }
 
-  if( !n || !m || !d || !numReps || !s || !dataFile ){
+  if( !n || !m || !d || !numReps || !dataFile ){
     fprintf(stderr,"more arguments needed.. exiting\n");
     exit(1);
   }
-  
   if( !D )
     D = d;
-  /* if(numReps>n){ */
-  /*   fprintf(stderr,"can't have more representatives than points.. exiting\n"); */
-  /*   exit(1); */
-  /* } */
+  if(numReps>n){ 
+    fprintf(stderr,"can't have more representatives than points.. exiting\n"); 
+    exit(1); 
+  } 
 }
 
 

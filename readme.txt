@@ -2,7 +2,7 @@
 Lawrence Cayton
 lcayton@tuebingen.mpg.de
 
-(C) Copyright 2010, Lawrence Cayton [lcayton@tuebingen.mpg.de]
+(C) Copyright 2011, Lawrence Cayton [lcayton@tuebingen.mpg.de]
  
 This program is free software: you can redistribute it and/or modify 
 it under the terms of the GNU General Public License as published by
@@ -27,7 +27,52 @@ both the one-shot (approximate) search algorithm, and the exact
 search algorithm.  
 
 There is a different implementation available that runs on a GPU;
-visit my (Lawrence Cayton) webpage for details.
+visit my (Lawrence Cayton's) webpage for details.
+
+Detailed information about the theory behind this method and its
+empirical performance can be found in the paper
+
+L. Cayton. Accelerating nearest neighbor search on manycore systems.  
+
+The paper is currently under review, but is available on my webpage
+and arxiv.
+
+
+---------------------------------------------------------------------
+COMPILATION
+
+This code currently requires the GNU Scientific Library (GSL), which
+is available for free on the web (or through a Linux package
+manager).  It also requires the OpenMP libraries and GCC.  
+
+To build the code, type make in a shell.  
+
+The code has been tested under Linux and MacOS X.  
+
+
+---------------------------------------------------------------------
+USAGE
+
+Two sample drivers are provided, one for the exact search algorithm,
+the other for the one-shot algorithm.  Type 
+$ exactRBC
+or
+$ oneShotRBC
+at the prompt to get a list of options.  
+
+Basic functionality is provided through these drivers, but I recommend
+integrating the RBC code directly into your code for the best
+results.  In particular, the best way to use the current
+implementation is to build the RBC once, then query it many times.
+
+Both methods require the setting of one parameter, the number of
+representatives.  For the one-shot algorithm, this parameter allows
+one to trade-off between search quality and search speed.  For the exact
+search algorithm, the results will be the same regardless of this
+setting, but search performance will vary.  The best way to set this
+parameter is to try a few different values out; a good starting point
+is generally 5*sqrt(n), where n is the number of database points.  
+See the paper for detailed information on this parameter.
 
 
 ---------------------------------------------------------------------
@@ -44,18 +89,15 @@ FILES
 * utils.{c,h} -- supporting code, including the implementations of
   some basic data structures and various routines useful for
   debugging.  
+* dists.{c,h} -- functions that compute the distance
+* defs.h -- definitions of all constants and structs.
 
+->DRIVERS
+* exactDriver.c -- example driver for the exact search algorithm
+* oneShotDriver.c -- example driver for the one-shot search 
+  algorithm.
+* allPairs.c -- 
 
----------------------------------------------------------------------
-COMPILATION
-
-This code currently requires the GNU Scientific Library (GSL), which
-is available for free on the web (or through a Linux package
-manager).  It also requires the OpenMP libraries, and GCC.  
-
-To build the code, type make in a shell.  
-
-The code has been tested under Linux and MacOS X.  
 
 
 ---------------------------------------------------------------------
@@ -66,7 +108,7 @@ MISC NOTES ON THE CODE
   code only uses the library for sorting and random number
   generation.  This dependency will probably be removed in the future.
 
-* For exact search, there are separate 1-NN and K-NN functions
+* For both search methods, there are separate 1-NN and K-NN functions 
   (distinguishable by the function names).  One can run the K-NN
   functions with K=1 and get the same answer as the 1-NN functions,
   but the 1-NN functions are slightly faster, and easier to
@@ -77,3 +119,9 @@ MISC NOTES ON THE CODE
   both.  searchExact(..) is somewhat faster for systems with a small
   number of cores.  I recommend using searchExactManyCores(..) for
   systems with more than 4 cores, though you might try both methods.
+
+* The algorithms implemented here work for an arbitrary metric.  The
+  implementation currently only supports the L_1 and L_2 distance.  An
+  arbitrary L_p distance is trivial to add by redefining 3 constants.
+  See defs.h for an example.  If you wish to implement your own
+  metric, simply replace the two functions in dists.{c,h}.  

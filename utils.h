@@ -8,6 +8,7 @@
 #include "defs.h"
 #include<sys/time.h>
 #include<stdint.h>
+#include<stdlib.h>
 
 void swap(unint*,unint*);
 void randPerm(unint,unint*);
@@ -19,7 +20,6 @@ void printIntMat(intMatrix);
 void printVector(real*,unint);
 void copyVector(real*,real*,unint);
 void copyRow(matrix *x, matrix *y, unint xi, unint yi);
-real distVec(matrix,matrix,unint,unint);
 double timeDiff(struct timeval,struct timeval);
 void copyMat(matrix*,matrix*);
 
@@ -35,6 +35,6 @@ void replaceMax(heap*,heapEl);
 void heapSort(heap*,unint*,real*);
 void reInitHeap(heap*);
 
-unint countBits(unsigned long);
-unint hamm(uint32_t *x, uint32_t *y, unint nwords);
+void initMat(matrix *x, unint r, unint c);
+size_t sizeOfMat(matrix x);
 #endif
