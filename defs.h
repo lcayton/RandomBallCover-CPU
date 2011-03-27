@@ -47,6 +47,7 @@ typedef float real;
 //#define MIN_REAL (-1.0*DBL_MAX)
 
 #define DUMMY_IDX UINT_MAX
+#define DELETED_IDX UINT_MAX-1 //used by heap
 
 #define IDX(i,j,ld) (((i)*(ld))+(j))
 // Row major indexing

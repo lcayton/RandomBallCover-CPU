@@ -120,8 +120,8 @@ int main(int argc, char**argv){
     unint **NNsBrute = (unint**)calloc( m, sizeof(*NNsBrute) );
     real **dToNNsBrute = (real**)calloc( m, sizeof(*dToNNsBrute) );;
     for(i=0; i<m; i++){
-      NNsBrute[i] = (unint*)calloc( m, sizeof(**NNsBrute) );
-      dToNNsBrute[i] = (real*)calloc( m, sizeof(**dToNNsBrute) );
+      NNsBrute[i] = (unint*)calloc( K, sizeof(**NNsBrute) );
+      dToNNsBrute[i] = (real*)calloc( K, sizeof(**dToNNsBrute) );
     }
     gettimeofday(&tvB,NULL);
     bruteK(x,q,NNsBrute,dToNNsBrute,K);
@@ -129,12 +129,25 @@ int main(int argc, char**argv){
     double bruteTime = timeDiff(tvB,tvE);
     printf("brute time elapsed = %6.4f \n", bruteTime );
     for(i=0; i<q.r; i++){
+      unint isBad=0;
       for(j=0; j<K; j++){
-	if(NNsK[i][j] != NNsBrute[i][j])
-	  printf("%d,%d: %d %d %6.5f %6.5f \n", i, j,NNsK[i][j], NNsBrute[i][j], dNNsK[i][j], dToNNsBrute[i][j]);
-	//printf("%d: %d %d %6.5f %6.5f \n", i, NNs[i], NNsBrute[i], distVec( q, x, i, NNs[i]), distVec( q, x, i, NNsBrute[i]) );
+	if(dNNsK[i][j]!=dToNNsBrute[i][j]){//NNsK[i][j] != NNsBrute[i][j])
+	  printf("%d,%d: %d %d %6.5f %6.5f \n", i, j, NNsK[i][j], NNsBrute[i][j], distVec(q,x,i,NNsK[i][j]), distVec(q,x,i,NNsBrute[i][j]));
+	  //printf("%d,%d: %d %d %6.5f %6.5f \n", i, j,NNsK[i][j], NNsBrute[i][j], dNNsK[i][j], dToNNsBrute[i][j]);
+	  isBad=1;
+	}
       }
+      if(isBad){
+	bruteK(rE,q,NNsBrute,dToNNsBrute,K);
+	for(j=0;j<K;j++){
+	  printf("%d %f \n",j,dToNNsBrute[0][j]);
+	}
+	break;
+      }
+	  
+	//printf("%d: %d %d %6.5f %6.5f \n", i, NNs[i], NNsBrute[i], distVec( q, x, i, NNs[i]), distVec( q, x, i, NNsBrute[i]) );
     }
+  
 
     free(NNsBrute);
     free(dToNNsBrute);
@@ -210,6 +223,10 @@ void parseInput(int argc, char **argv){
     fprintf(stderr,"can't have more representatives than points.. exiting\n"); 
     exit(1); 
   } 
+  if(K>n){
+    fprintf(stderr,"K can't be greater than the number of points.. exiting\n"); 
+    exit(1); 
+  }
 }
 
 
@@ -266,7 +283,7 @@ void orgData(real *data, unint n, unint d, matrix x, matrix q){
   p = (unint*)calloc(n,sizeof(*p));
   
   randPerm(n,p);
-
+  
   for(i=0,fi=0 ; i<x.r ; i++,fi++){
     for(j=0;j<x.c;j++){
       x.mat[IDX(i,j,x.ld)] = data[IDX(p[fi],j,d)];

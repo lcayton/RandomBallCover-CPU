@@ -241,15 +241,25 @@ void replaceMax(heap *hp, heapEl newEl){
 }
 
 // Sorts the heap (in increasing order), storing the indices
-// in sortInds and the values in sortVals.
+// in sortInds and the values in sortVals.  If the heap is not
+// full (ie it has DUMMY_IDX's in it), it will pad the sortVals 
+// array with MAX_REAL and the sortInds with DUMMY_IDX.  
+// This destroys the heap.
 void heapSort(heap *hp, unint *sortInds, real *sortVals){
   unint i,j, swapInd;
   heapEl t;
 
   for(i=0; i<hp->len; i++){
+    sortVals[i] = MAX_REAL;
+    sortInds[i] = DUMMY_IDX;
+  }
+  
+  for(i=0; i<hp->len; i++){
     sortInds[hp->len-i-1] = hp->h[0].id;
-    sortVals[hp->len-i-1] = hp->h[0].val;
-    hp->h[0].id = DUMMY_IDX;
+    if(hp->h[0].id != DUMMY_IDX)
+      sortVals[hp->len-i-1] = hp->h[0].val;
+
+    hp->h[0].id = DELETED_IDX;
     hp->h[0].val = MIN_REAL;
 
     j=0;
@@ -258,10 +268,13 @@ void heapSort(heap *hp, unint *sortInds, real *sortVals){
 	swapInd = MAXI(hp->h[2*j+1].val, hp->h[2*j+2].val, 2*j+1, 2*j+2);
       else
 	swapInd = 2*j+1;
-      if(hp->h[swapInd].id==DUMMY_IDX)
-	break;
+      
       t.id = hp->h[swapInd].id;
       t.val = hp->h[swapInd].val;
+      
+      if( t.id == DELETED_IDX )
+	break;
+
       hp->h[swapInd].id = hp->h[j].id;
       hp->h[swapInd].val = hp->h[j].val;
       hp->h[j].id = t.id;

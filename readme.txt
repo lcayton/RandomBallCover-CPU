@@ -125,3 +125,8 @@ MISC NOTES ON THE CODE
   arbitrary L_p distance is trivial to add by redefining 3 constants.
   See defs.h for an example.  If you wish to implement your own
   metric, simply replace the two functions in dists.{c,h}.  
+
+* The code uses the default number of threads defined by OpenMP.
+  Generally, this will be the number of cores in your computer.  If
+  you wish to manually set this, set the OMP_NUM_THREADS environment
+  variable before calling the driver.  

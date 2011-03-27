@@ -50,7 +50,7 @@ void buildExact(matrix x, matrix *r, rep *ri, unint numReps){
     ri[repID[i]].radius = MAX( dToReps[i], ri[repID[i]].radius );
     ri[repID[i]].len++;
   }
-  
+ 
   unint **tempI = (unint**)calloc(numReps, sizeof(*tempI));
   real **tempD = (real**)calloc(numReps, sizeof(*tempD));
   for(i=0; i<numReps; i++){
@@ -68,7 +68,9 @@ void buildExact(matrix x, matrix *r, rep *ri, unint numReps){
     tempD[repID[i]][tempCount[repID[i]]++] = dToReps[i];
   }
 
-
+  //this stores the owned points in order of distance to the
+  //representative.  This ordering is not currently necc. for the search 
+  //algorithm, but might be used in the future.
   size_t *p = (size_t*)calloc(longestLength, sizeof(*p));
   for(i=0; i<numReps; i++){
     gsl_sort_float_index( p, tempD[i], 1, ri[i].len );
@@ -327,7 +329,7 @@ void searchExactManyCoresK(matrix q, matrix x, matrix r, rep *ri, unint **NNs, r
     createList(&toSearch[i]);
   
   bruteKHeap(r,q,repID,dToReps,K);
-  
+
 #pragma omp parallel for private(j,k)
   for(i=0; i<r.pr/CL; i++){
     unint row = CL*i;
@@ -340,8 +342,8 @@ void searchExactManyCoresK(matrix q, matrix x, matrix r, rep *ri, unint **NNs, r
       for(k=0; k<CL; k++){
 	//dToRep[j] is current UB on dist to j's NN
 	//temp - ri[i].radius is LB to dist belonging to rep i
-	if( row+k<r.r && dToReps[j][K-1] >= temp[k] - ri[row+k].radius && 3.0*dToReps[j][K-1] >= temp[k] )
-	  addToList(&toSearch[row+k], j); //need to search rep 
+	if( row+k<r.r && 3.0*dToReps[j][K-1] >= temp[k] && dToReps[j][K-1] >= temp[k] - ri[row+k].radius) 
+	  addToList(&toSearch[row+k], j); //query j needs to search rep 
       }
     }
     for(j=0;j<CL;j++){

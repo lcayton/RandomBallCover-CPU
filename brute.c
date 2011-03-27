@@ -82,9 +82,11 @@ void bruteK(matrix x, matrix q, unint **NNs, real **dToNNs, unint k){
       gsl_sort_float_smallest_index(t[tn][l], k, d[tn][l], 1, x.r);
     
     for(l=0; l<CL; l++){
-      for(j=0; j<k; j++){
-	NNs[row+l][j] = (unint)t[tn][l][j];
-	dToNNs[row+l][j] = d[tn][l][t[tn][l][j]];
+      if(row+l<q.r){
+	for(j=0; j<k; j++){
+	  NNs[row+l][j] = (unint)t[tn][l][j];
+	  dToNNs[row+l][j] = d[tn][l][t[tn][l][j]];
+	}
       }
     }
   }
@@ -124,7 +126,7 @@ void bruteKHeap(matrix X, matrix Q, unint **NNs, real **dToNNs, unint K){
 	temp[k] = distVec( Q, X, t+k, j );
       
       for(k=0; k<CL; k++){
-	if( temp[k] < hp[tn][k].h[0].val ){
+	if( temp[k] <= hp[tn][k].h[0].val ){
 	  newEl.id=j;
 	  newEl.val=temp[k];
 	  replaceMax( &hp[tn][k], newEl);
@@ -132,7 +134,8 @@ void bruteKHeap(matrix X, matrix Q, unint **NNs, real **dToNNs, unint K){
       }
     }
     for(j=0; j<CL; j++)
-      heapSort(&hp[tn][j], NNs[t+j], dToNNs[t+j]);
+      if(t+j<Q.r)
+	heapSort(&hp[tn][j], NNs[t+j], dToNNs[t+j]);
       
     for(j=0; j<CL; j++)
       reInitHeap(&hp[tn][j]);
@@ -353,7 +356,6 @@ void bruteList(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, un
       }
     }
   }
-
   for(i=0; i<nt; i++){
     free(d[i]); free(nn[i]);
   }
@@ -392,7 +394,7 @@ void bruteListK(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, u
       for(k=0; k<rt.len; k++){
 	for(l=0; l<CL; l++ ){
 	  if(qInd[l]!=DUMMY_IDX){
-	    //	    temp = distVec( Q, X, qInd[l], rt.lr[k] );
+	    //temp = distVec( Q, X, qInd[l], rt.lr[k] );
 	    temp = distVecLB( Q, X, qInd[l], rt.lr[k], hp[tn][qInd[l]].h[0].val );
 	    if( temp < hp[tn][qInd[l]].h[0].val ){
 	      newEl.id = rt.lr[k];
@@ -405,7 +407,7 @@ void bruteListK(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, u
     }
   }
   
-  // Now merge the NNs found with each thread.  Currently this performs the
+  // Now merge the NNs found by each thread.  Currently this performs the
   // merge within one thread, but should eventually be done in a proper
   // parallel-reduce fashion.
   unint **tInds;
@@ -418,17 +420,35 @@ void bruteListK(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, u
   }
   
   size_t *indVec = (size_t*)calloc(nt*K, sizeof(*indVec));
-  size_t *tempInds = (size_t*)calloc(nt*K, sizeof(*indVec));
+  size_t *tempInds = (size_t*)calloc(nt*K, sizeof(*tempInds));
   real *valVec = (real*)calloc(nt*K, sizeof(*valVec));
 
   for( i=0; i<m; i++){
+    /* debug */
+    /* if(i==720){ */
+    /*   for(j=0; j<nt; j++){ */
+    /* 	printf("\n\nj=%d \n",j); */
+    /* 	for(k=0; k<K; k++) */
+    /* 	  printf("(%d %6.2f) ", hp[j][i].h[k].id, hp[j][i].h[k].val);  */
+    /* 	heapSort( &hp[j][i], tInds[j], tVals[j] ); */
+    /* 	printf("\n"); */
+    /* 	for(k=0; k<K; k++) */
+    /* 	  printf("(%d %6.2f) ", tInds[j][k], tVals[j][k]); */
+	
+    /*   } */
+    /* } */
+    /* end */
+
     for( j=0; j<nt; j++){
       heapSort( &hp[j][i], tInds[j], tVals[j] );
+      //      if(tInds[j][0]==DUMMY_IDX)
+      //      	printf("%d !!!\n", i);
       for( k=0; k<K; k++){
 	indVec[j*K + k] = tInds[j][k];
 	valVec[j*K + k] = tVals[j][k];
       }
-    }      
+    }
+    
     gsl_sort_float_index(tempInds, valVec, 1, nt*K);
     for( j=0; j<K; j++ ){
       dToNNs[i][j] = valVec[tempInds[j]];
