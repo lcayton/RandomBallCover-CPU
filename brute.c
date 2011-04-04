@@ -34,8 +34,8 @@ void brutePar(matrix X, matrix Q, unint *NNs, real *dToNNs){
     for(j=0; j<X.r; j++ ){
       for(k=0; k<CL; k++){
 	if(t+k<Q.r){
-	  //temp[k] = distVecLB( Q, X, t+k, j, dToNNs[t+k] );
-	  temp[k] = distVec( Q, X, t+k, j );
+	  temp[k] = distVecLB( Q, X, t+k, j, dToNNs[t+k] );
+	  //temp[k] = distVec( Q, X, t+k, j );
 	}
       }
       for(k=0; k<CL; k++){
@@ -123,8 +123,8 @@ void bruteKHeap(matrix X, matrix Q, unint **NNs, real **dToNNs, unint K){
 
     for(j=0; j<X.r; j++ ){
       for(k=0; k<CL; k++){
-	temp[k] = distVec( Q, X, t+k, j );
-	//	temp[k] = distVecLB( Q, X, t+k, j, hp[tn][k].h[0].val );
+	//temp[k] = distVec( Q, X, t+k, j );
+	temp[k] = distVecLB( Q, X, t+k, j, hp[tn][k].h[0].val );
       }
       for(k=0; k<CL; k++){
 	if( temp[k] <= hp[tn][k].h[0].val ){
@@ -200,7 +200,7 @@ void bruteMap(matrix X, matrix Q, rep *ri, unint* qMap, unint *NNs, real *dToNNs
     for(k=0; k<maxLen; k++ ){
       for(j=0; j<CL; j++ ){
 	if( k<rt[j].len ){
-	  temp = distVec( Q, X, qSort[row+j], rt[j].lr[k] );
+	  temp = distVec( Q, X, qSort[row+j], rt[j].lr[k] ); //change to LB
 	  if( temp < dToNNs[qSort[row+j]]){
 	    NNs[qSort[row+j]] = rt[j].lr[k];
 	    dToNNs[qSort[row+j]] = temp;
@@ -252,15 +252,13 @@ void bruteMapK(matrix X, matrix Q, rep *ri, unint* qMap, unint **NNs, real **dTo
     }  
     
     for(j=0; j<maxLen; j++ ){
-
       for(k=0; k<CL; k++ ){
 	if( j<rt[k].len )
-	  temp[k] = distVec( Q, X, qSort[row+k], rt[k].lr[j] );
+	  temp[k] = distVecLB( Q, X, qSort[row+k], rt[k].lr[j], hp[tn][k].h[0].val  );
       }
       
       for(k=0; k<CL; k++ ){
 	if( j<rt[k].len ){
-	  //	  temp = distVec( Q, X, qSort[row+k], rt[k].lr[j] );
 	  if( temp[k] < hp[tn][k].h[0].val ){
 	    newEl.id = rt[k].lr[j];
 	    newEl.val = temp[k];
@@ -308,8 +306,7 @@ void bruteList(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, un
     for(j=0; j<m; j++)
       d[i][j] = MAX_REAL;
   }
-  //  for(i=0; i<m; i++)
-  //    dToNNs[i] = MAX_REAL;
+
 
 #pragma omp parallel for private(j,k,l,temp) //schedule(dynamic)
   for( i=0; i<numReps; i++ ){
@@ -330,7 +327,6 @@ void bruteList(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, un
       for(k=0; k<rt.len; k++){
 	for(l=0; l<CL; l++ ){
 	  if(qInd[l]!=DUMMY_IDX){
-	    //temp = distVec( Q, X, qInd[l], rt.lr[k] );
 	    temp = distVecLB( Q, X, qInd[l], rt.lr[k], curMinDist[l] );
 	    if( temp <= curMinDist[l] ){
 	      curMinInd[l] = rt.lr[k];
@@ -395,7 +391,6 @@ void bruteListK(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, u
       for(k=0; k<rt.len; k++){
 	for(l=0; l<CL; l++ ){
 	  if(qInd[l]!=DUMMY_IDX){
-	    //temp = distVec( Q, X, qInd[l], rt.lr[k] );
 	    temp = distVecLB( Q, X, qInd[l], rt.lr[k], hp[tn][qInd[l]].h[0].val );
 	    if( temp < hp[tn][qInd[l]].h[0].val ){
 	      newEl.id = rt.lr[k];
@@ -425,25 +420,9 @@ void bruteListK(matrix X, matrix Q, rep *ri, intList *toSearch, unint numReps, u
   real *valVec = (real*)calloc(nt*K, sizeof(*valVec));
 
   for( i=0; i<m; i++){
-    /* debug */
-    /* if(i==720){ */
-    /*   for(j=0; j<nt; j++){ */
-    /* 	printf("\n\nj=%d \n",j); */
-    /* 	for(k=0; k<K; k++) */
-    /* 	  printf("(%d %6.2f) ", hp[j][i].h[k].id, hp[j][i].h[k].val);  */
-    /* 	heapSort( &hp[j][i], tInds[j], tVals[j] ); */
-    /* 	printf("\n"); */
-    /* 	for(k=0; k<K; k++) */
-    /* 	  printf("(%d %6.2f) ", tInds[j][k], tVals[j][k]); */
-	
-    /*   } */
-    /* } */
-    /* end */
-
+ 
     for( j=0; j<nt; j++){
       heapSort( &hp[j][i], tInds[j], tVals[j] );
-      //      if(tInds[j][0]==DUMMY_IDX)
-      //      	printf("%d !!!\n", i);
       for( k=0; k<K; k++){
 	indVec[j*K + k] = tInds[j][k];
 	valVec[j*K + k] = tVals[j][k];

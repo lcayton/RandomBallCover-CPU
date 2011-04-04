@@ -1,14 +1,22 @@
 CC=gcc
-#other flags -O3 -funroll-loops  -msse -g 
 CCFLAGS= -fopenmp -funroll-loops -msse -Wall -O3
-SOURCES= exactDriver2.c utils.c brute.c rbc.c dists.c
 LINKFLAGS= -lgsl -lgslcblas -lm
-OBJECTS=$(SOURCES:.c=.o)
-EXECUTABLE=testCRBC
-all: $(SOURCES) $(CUSOURCES) $(EXECUTABLE)
+EXACT_EXECUTABLE=exactRBC
+EXACT_DRIVER=exactDriver.c
+ONESHOT_EXECUTABLE=oneShotRBC
+ONESHOT_DRIVER=oneShotDriver.c
+SOURCES= utils.c brute.c rbc.c dists.c
+OBJECTS=$(SOURCES:.c=.o) 
+OS_OBJECTS=$(ONESHOT_DRIVER:.c=.o) 
+E_OBJECTS=$(EXACT_DRIVER:.c=.o)
 
-$(EXECUTABLE): $(OBJECTS)
-	$(CC) $(CCFLAGS) $(OBJECTS) -o $@ $(LINKFLAGS)
+all: $(ONESHOT_EXECUTABLE) $(EXACT_EXECUTABLE)
+
+$(ONESHOT_EXECUTABLE): $(OBJECTS) $(OS_OBJECTS)
+	$(CC) $(CCFLAGS) $(OBJECTS) $(OS_OBJECTS) -o $@ $(LINKFLAGS)
+
+$(EXACT_EXECUTABLE): $(OBJECTS) $(E_OBJECTS)
+	$(CC) $(CCFLAGS) $(OBJECTS) $(E_OBJECTS) -o $@ $(LINKFLAGS)
 
 %.o:%.c
 	$(CC) $(CCFLAGS) -c $+ 

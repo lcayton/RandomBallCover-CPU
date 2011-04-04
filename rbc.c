@@ -379,7 +379,9 @@ void searchExactManyCoresK(matrix q, matrix x, matrix r, rep *ri, unint **NNs, r
 //Builds the RBC for the One-shot (inexact) method.
 //Note: allocates memory for r and ri that must be freed
 //externally.  Use freeRBC.
-void buildOneShot(matrix x, matrix *r, rep *ri, unint numReps, unint s){
+void buildOneShot(matrix x, matrix *r, rep *ri, unint numReps){
+  unint s = numReps; //number of points per rep. Set equal to numReps
+                     //as suggested by theory. 
   unint ps = CPAD(s);
   unint i, j;
   
@@ -435,24 +437,18 @@ void searchOneShot(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
 
 
 // Performs (approx) K-NN search with the RBC One-shot algorithm.
-void searchOneShotK(matrix q, matrix x, matrix r, rep *ri, unint **NNs, unint K){
-  int i;
+void searchOneShotK(matrix q, matrix x, matrix r, rep *ri, unint **NNs, real **dNNs, unint K){
+
   unint *repID = (unint*)calloc(q.pr, sizeof(*repID));
-  real **dToReps = (real**)calloc(q.pr, sizeof(*dToReps));
-  for(i=0; i<q.pr; i++)
-    dToReps[i] = (real*)calloc(K, sizeof(**dToReps));
   real *dT = (real*)calloc(q.pr, sizeof(*dT));
   
   // Determine which rep each query is closest to.
   brutePar(r,q,repID,dT);
   
   // Search that rep's ownership list.
-  bruteMapK(x,q,ri,repID,NNs,dToReps,K);
+  bruteMapK(x,q,ri,repID,NNs,dNNs,K);
   
   free(repID);
-  for(i=0; i<q.pr; i++)
-    free(dToReps[i]);
-  free(dToReps);
   free(dT);
 }
 

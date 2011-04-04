@@ -60,6 +60,9 @@ or
 $ oneShotRBC
 at the prompt to get a list of options.  
 
+The output file format is a list of the queries' NNs,
+followed by a list of the distances to those NNs.
+
 Basic functionality is provided through these drivers, but I recommend
 integrating the RBC code directly into your code for the best
 results.  In particular, the best way to use the current
@@ -80,8 +83,6 @@ FILES
 
 * brute.{c,h} -- implementation of brute force NN search and many
   variants.  These routines perform virtually all the work.
-* driver.{c,h} -- definitions of constants and macros, including the
-  distance metric.
 * rbc.{c,h} -- the core RBC algorithms.  This includes build and
   search routines for exact and approximate search.  The searchExact
   method comes in two forms, one with ManyCores appended to the
@@ -90,14 +91,14 @@ FILES
   some basic data structures and various routines useful for
   debugging.  
 * dists.{c,h} -- functions that compute the distance
-* defs.h -- definitions of all constants and structs.
+* defs.h -- defintions of constants and macros, including the
+  distance metric.
 
-->DRIVERS
+
+-->DRIVERS
 * exactDriver.c -- example driver for the exact search algorithm
 * oneShotDriver.c -- example driver for the one-shot search 
   algorithm.
-* allPairs.c -- 
-
 
 
 ---------------------------------------------------------------------

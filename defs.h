@@ -29,9 +29,9 @@
 
 
 // L_2 versions of the above macros:
-#define DIST(i,j) ( ( (i)-(j) )*( (i)-(j) ) )  // L_2
-#define DIST_EXP(x) ( sqrt(x) ) //L_2
-#define DIST_ROOT(x) ( (x)*(x) ) //L_2
+#define DIST(i,j) ( ( (i)-(j) )*( (i)-(j) ) )  
+#define DIST_EXP(x) ( sqrt(x) ) 
+#define DIST_ROOT(x) ( (x)*(x) ) 
 
 // Format that the data is manipulated in:
 typedef float real;

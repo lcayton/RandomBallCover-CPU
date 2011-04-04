@@ -11,15 +11,18 @@
 #include "rbc.h"
 #include "dists.h"
 
+
 void parseInput(int,char**);
 void readData(char*,matrix);
 void readDataText(char*,matrix);
+void evalApprox(matrix,matrix,unint*);
+double evalApproxK(matrix,matrix,unint**,unint);
 void writeDoubs(int, char*, double,...);
 void writeNeighbs(char*,char*,unint**,real**);
 
 char *dataFileX, *dataFileQ, *dataFileXtxt, *dataFileQtxt, *outFile, *outFiletxt;
-unint n=0, m=0, d=0, numReps=0, runBrute=0;
-unint K=1;
+unint n=0, m=0, d=0, numReps=0, runBrute=0, runEval=0;
+unint K = 1;
 
 int main(int argc, char**argv){
   matrix x, q;
@@ -43,7 +46,6 @@ int main(int argc, char**argv){
     fprintf(stderr, "memory allocation failure .. exiting \n");
     exit(1);
   }
-
   
   // Read data:
   if(dataFileXtxt)
@@ -63,27 +65,26 @@ int main(int argc, char**argv){
     dNNs[i] = (real*)calloc(K, sizeof(**dNNs) );
   }
 
-  matrix rE; //matrix of representatives
-  rep *riE = (rep*)calloc( CPAD(numReps), sizeof(*riE) ); //data struct for RBC
+  matrix r; //matrix of representatives
+  rep *ri = (rep*)calloc( CPAD(numReps), sizeof(*ri) ); //data struct for RBC
   
   // ******** builds the RBC
   gettimeofday(&tvB,NULL);
-  buildExact(x, &rE, riE, numReps);
+  buildOneShot(x, &r, ri, numReps);
   gettimeofday(&tvE,NULL);
   double buildTime =  timeDiff(tvB,tvE);
-  printf("exact build time elapsed = %6.4f \n", buildTime );
+  printf("one-shot build time elapsed = %6.4f \n", buildTime );
   
 
   // ******** queries the RBC
   gettimeofday(&tvB,NULL);
-  if( threadMax<8 )
-    searchExactK(q, x, rE, riE, NNs, dNNs, K);
-  else
-    searchExactManyCoresK(q, x, rE, riE, NNs, dNNs, K);
+  searchOneShotK(q, x, r, ri, NNs, dNNs, K);
   gettimeofday(&tvE,NULL);
   double searchTime =  timeDiff(tvB,tvE);
-  printf("exact k-nn search time elapsed = %6.4f \n", searchTime );
-
+  printf("one-shot k-nn search time elapsed = %6.4f \n", searchTime );
+  
+  if( runEval )
+    evalApproxK(q, x, NNs, K);
 
   // ******** runs brute force search.
   if(runBrute){
@@ -99,15 +100,7 @@ int main(int argc, char**argv){
     gettimeofday(&tvE,NULL);
     double bruteTime = timeDiff(tvB,tvE);
     printf("brute time elapsed = %6.4f \n", bruteTime );
-    
-    unint j;
-    for(i=0; i<m; i++){
-      for(j=0; j<K; j++)
-	if( NNs[i][j] != NNsBrute[i][j] ){
-	  printf("%d %d %d %f %f \n", i, NNs[i][j], NNsBrute[i][j], distVec(q,x,i,NNs[i][j]), distVec(q,x,i,NNsBrute[i][j]));
-	}
-    }
-
+        
     free(NNsBrute);
     free(dToNNsBrute);
   }
@@ -115,8 +108,9 @@ int main(int argc, char**argv){
   if( outFile || outFiletxt )
     writeNeighbs( outFile, outFiletxt, NNs, dNNs );
   
+
   //clean up
-  freeRBC( rE, riE );
+  freeRBC( r, ri );
 
   for(i=0;i<m; i++){
     free(NNs[i]);    free(dNNs[i]);
@@ -129,20 +123,24 @@ int main(int argc, char**argv){
 }
 
 
+
+
+
 void parseInput(int argc, char **argv){
   int i=1;
   if(argc <= 1){
-    printf("\nusage: \n  exactRBC -x datafileX -q datafileQ -n numPts (DB) -m numQueries -d dim -r numReps [-o outFile] [-b] [-k neighbs]\n\n");
+    printf("\nusage: \n  oneShotRBC -x datafileX -q datafileQ -n numPts (DB) -m numQueries -d dim -r numReps [-o outFile] [-b] [-e] [-k neighbs]\n\n");
     printf("\tdatafileX    = binary file containing the database\n");
     printf("\tdatafileQ    = binary file containing the queries\n");
     printf("\tnumPts       = size of database\n");
     printf("\tnumQueries   = number of queries\n");
     printf("\tdim          = dimensionality\n");
     printf("\tnumReps      = number of representatives\n");
-    printf("\toutFile      = output file (optional); stored in text format\n");
+    printf("\toutFile      = binary output file (optional)\n");
     printf("\tneighbs      = num neighbors (optional; default is 1)\n"); 
-    printf("\n\tuse -b option to run brute force search (in addition to the RBC)\n");
-    printf("\n\nTo input/output data in text format (instead of bin):\n\tuse the -X and -Q and -O switches in place of -x and -q and -o (respectively).\n");
+    printf("\n\tuse -b to run brute force search (in addition to the RBC)\n");
+    printf("\n\tuse -e to run the evaluation procedure.  \n\tNOTE: this procedure takes as long as brute force.\n");
+    printf("\n\n\tTo input/output data in text format (instead of bin), use the \n\t-X and -Q and -O switches in place of -x and -q and -o (respectively).\n");
     printf("\n\n");
     exit(0);
   }
@@ -166,6 +164,8 @@ void parseInput(int argc, char **argv){
       numReps = atoi(argv[++i]);
     else if(!strcmp(argv[i], "-b"))
       runBrute = 1;
+    else if(!strcmp(argv[i], "-e"))
+      runEval = 1;
     else if(!strcmp(argv[i], "-o"))
       outFile = argv[++i];
     else if(!strcmp(argv[i], "-O"))
@@ -247,6 +247,63 @@ void readDataText(char *dataFile, matrix x){
     }
   }
   fclose(fp);
+}
+
+
+void evalApprox(matrix q, matrix x, unint *NNs){
+  real *ranges = (real*)calloc(q.pr, sizeof(*ranges));
+  unint *counts = (unint*)calloc(q.pr,sizeof(*counts));
+  unint i;
+
+  for(i=0; i<q.r; i++)
+    ranges[i] = distVec(q,x,i,NNs[i]);
+
+  rangeCount(x,q,ranges,counts);
+
+  double avgCount = 0.0;
+  for(i=0; i<q.r; i++)
+    avgCount += ((double)counts[i]);
+  avgCount/=q.r;
+  printf("average num closer = %6.5f \n",avgCount);
+
+  free(counts);
+  free(ranges);
+}
+
+
+double evalApproxK(matrix q, matrix x, unint **NNs, unint K){
+  unint i,j,k;
+  struct timeval tvB, tvE;
+  unint **nnCorrect = (unint**)calloc(q.pr, sizeof(*nnCorrect));
+  real **dT = (real**)calloc(q.pr, sizeof(*dT));
+  for(i=0; i<q.pr; i++){
+    nnCorrect[i] = (unint*)calloc(K, sizeof(**nnCorrect));
+    dT[i] = (real*)calloc(K, sizeof(**dT));
+  }
+
+  gettimeofday(&tvB,NULL); 
+  bruteK(x, q, nnCorrect, dT, K);
+  gettimeofday(&tvE,NULL); 
+  
+  unsigned long ol = 0;
+  for(i=0; i<q.r; i++){
+    for(j=0; j<K; j++){
+      for(k=0; k<K; k++){
+	ol += (NNs[i][j] == nnCorrect[i][k]);
+      }
+    }
+  }
+  printf("avg overlap = %6.4f / %d\n", ((double)ol)/((double)q.r), K);
+  printf("(bruteK took %6.4f seconds) \n",timeDiff(tvB,tvE));
+  
+  for(i=0; i<q.pr; i++){
+    free(nnCorrect[i]);
+    free(dT[i]);
+  }
+  free(nnCorrect);
+  free(dT);
+  
+  return ((double)ol)/((double)q.r);
 }
 
 
