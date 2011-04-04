@@ -122,9 +122,10 @@ void bruteKHeap(matrix X, matrix Q, unint **NNs, real **dToNNs, unint K){
     heapEl newEl;
 
     for(j=0; j<X.r; j++ ){
-      for(k=0; k<CL; k++)
+      for(k=0; k<CL; k++){
 	temp[k] = distVec( Q, X, t+k, j );
-      
+	//	temp[k] = distVecLB( Q, X, t+k, j, hp[tn][k].h[0].val );
+      }
       for(k=0; k<CL; k++){
 	if( temp[k] <= hp[tn][k].h[0].val ){
 	  newEl.id=j;

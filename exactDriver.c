@@ -11,21 +11,21 @@
 #include "rbc.h"
 #include "dists.h"
 
-void testHam(matrix,matrix);
+
 void parseInput(int,char**);
 void readData(char*,unint,unint,real*);
 void readDataText(char*,unint,unint,real*);
-void orgData(real*,unint,unint,matrix,matrix);
 void evalApprox(matrix,matrix,unint*);
 double evalApproxK(matrix,matrix,unint**,unint);
 void writeDoubs(int, char*, double,...);
+void writeNeighbs(char*,unint**);
 
-char *dataFile, *outFile;
+
+char *dataFileX, *dataFileQ, *dataFileXtxt, *dataFileQtxt, *outFile;
 unint n=0, m=0, d=0, numReps=0, D=0, runBrute=0;
 unint K = 1;
 
 int main(int argc, char**argv){
-  real *data;
   matrix x, q;
   unint i,j;
   struct timeval tvB,tvE;
@@ -38,12 +38,6 @@ int main(int argc, char**argv){
 
   int threadMax = omp_get_max_threads();
   printf("number of threads = %d \n",threadMax);
-  
-  data  = (real*)calloc( (n+m)*d, sizeof(*data) );
-  if(!data){
-    fprintf(stderr, "memory allocation failure .. exiting \n");
-    exit(1);
-  }
   
   initMat( &x, n, D );
   initMat( &q, m, D );
@@ -62,16 +56,26 @@ int main(int argc, char**argv){
   /*   exit(1); */
   /* } */
   
-  readData(dataFile, (n+m), d, data);
-  orgData(data, (n+m), d, x, q);
-  free(data);
+  // Read data:
+  if(dataFileXtxt)
+    readDataText(dataFileXtxt, n, D, x.mat);
+  else
+    readData(dataFileX, n, D, x.mat);
+  if(dataFileQtxt)
+    readDataText(dataFileQtxt, m, D, q.mat);
+  else
+    readData(dataFileQ, m, D, q.mat);
+ 
   
-  unint *NNs = (unint*)calloc( m, sizeof(*NNs)); //indices of the NNs
-  real *dToNNs = (real*)calloc( m, sizeof(*dToNNs) );  //dists to the NNs
-  
-  matrix rE;
-  rep *riE = (rep*)calloc( CPAD(numReps), sizeof(*riE) );
-  
+  unint **NNs = (unint**)calloc( m, sizeof(*NNs) ); //indices of NNs
+  real **dNNs = (real**)calloc( m, sizeof(*dNNs) ); //dists to NNs
+  for(i=0;i<m; i++){
+    NNs[i] = (unint*)calloc(K, sizeof(**NNs));
+    dNNs[i] = (real*)calloc(K, sizeof(**dNNs) );
+  }
+
+  matrix rE; //matrix of representatives
+  rep *riE = (rep*)calloc( CPAD(numReps), sizeof(*riE) ); //data struct for RBC
   
   // ******** builds the RBC
   gettimeofday(&tvB,NULL);
@@ -79,31 +83,14 @@ int main(int argc, char**argv){
   gettimeofday(&tvE,NULL);
   double buildTime =  timeDiff(tvB,tvE);
   printf("exact build time elapsed = %6.4f \n", buildTime );
-
-
-  // ******** searches the RBC
-  /* gettimeofday(&tvB,NULL); */
-  /* if( threadMax<8 ) */
-  /*   searchExact(q, x, rE, riE, NNs, dToNNs); */
-  /* else */
-  /*   searchExactManyCores(q, x, rE, riE, NNs, dToNNs); */
-  /* gettimeofday(&tvE,NULL); */
-  /* double searchTime =  timeDiff(tvB,tvE); */
-  /* printf("exact search time elapsed = %6.4f \n", searchTime ); */
-
   
-  unint **NNsK = (unint**)calloc( m, sizeof(*NNsK) );
-  for(i=0;i<m; i++)
-    NNsK[i] = (unint*)calloc(K, sizeof(**NNsK));
-  real **dNNsK = (real**)calloc( m, sizeof(*dNNsK) );
-  for(i=0; i<m; i++)
-    dNNsK[i] = (real*)calloc(K, sizeof(**dNNsK) );
 
+  // ******** queries the RBC
   gettimeofday(&tvB,NULL);
   if( threadMax<8 )
-    searchExactK(q, x, rE, riE, NNsK, dNNsK, K);
+    searchExactK(q, x, rE, riE, NNs, dNNs, K);
   else
-    searchExactManyCoresK(q, x, rE, riE, NNsK, dNNsK, K);
+    searchExactManyCoresK(q, x, rE, riE, NNs, dNNs, K);
   gettimeofday(&tvE,NULL);
   double searchTime =  timeDiff(tvB,tvE);
   printf("exact k-nn search time elapsed = %6.4f \n", searchTime );
@@ -128,38 +115,33 @@ int main(int argc, char**argv){
     gettimeofday(&tvE,NULL);
     double bruteTime = timeDiff(tvB,tvE);
     printf("brute time elapsed = %6.4f \n", bruteTime );
-    for(i=0; i<q.r; i++){
-      unint isBad=0;
-      for(j=0; j<K; j++){
-	if(dNNsK[i][j]!=dToNNsBrute[i][j]){//NNsK[i][j] != NNsBrute[i][j])
-	  printf("%d,%d: %d %d %6.5f %6.5f \n", i, j, NNsK[i][j], NNsBrute[i][j], distVec(q,x,i,NNsK[i][j]), distVec(q,x,i,NNsBrute[i][j]));
-	  //printf("%d,%d: %d %d %6.5f %6.5f \n", i, j,NNsK[i][j], NNsBrute[i][j], dNNsK[i][j], dToNNsBrute[i][j]);
-	  isBad=1;
-	}
-      }
-      if(isBad){
-	bruteK(rE,q,NNsBrute,dToNNsBrute,K);
-	for(j=0;j<K;j++){
-	  printf("%d %f \n",j,dToNNsBrute[0][j]);
-	}
-	break;
-      }
-	  
-	//printf("%d: %d %d %6.5f %6.5f \n", i, NNs[i], NNsBrute[i], distVec( q, x, i, NNs[i]), distVec( q, x, i, NNsBrute[i]) );
-    }
-  
 
+    if(outFile)
+      writeDoubs(2, outFile, ((double)D), bruteTime );
+    
+    for(i=0; i<q.r; i++){
+      for(j=0; j<K; j++){
+	if(dNNs[i][j]!=dToNNsBrute[i][j]){
+	  printf("%d,%d: %d %d %6.5f %6.5f \n", i, j, NNs[i][j], NNsBrute[i][j], distVec(q,x,i,NNs[i][j]), distVec(q,x,i,NNsBrute[i][j]));
+	}
+      }
+    }
+    
     free(NNsBrute);
     free(dToNNsBrute);
   }
   
   if(outFile)
-    writeDoubs(4,outFile,(double)numReps,((double)D),buildTime,searchTime);
+    writeDoubs( 4, outFile, (double)numReps, ((double)D), buildTime, searchTime );
 
-  
+
+  //clean up
   freeRBC( rE, riE );
-  free(NNs);
-  free(dToNNs);
+
+  for(i=0;i<m; i++){
+    free(NNs[i]);    free(dNNs[i]);
+  }
+  free(NNs); free(dNNs);
   free(x.mat);
   free(q.mat);
   
@@ -173,8 +155,9 @@ int main(int argc, char**argv){
 void parseInput(int argc, char **argv){
   int i=1;
   if(argc <= 1){
-    printf("\nusage: \n  testRBC -f datafile (bin) -n numPts (DB) -m numQueries -d dim -r numReps [-o outFile] [-b] [-k neighbs]\n\n");
-    printf("\tdatafile     = binary file containing the data\n");
+    printf("\nusage: \n  testRBC -x datafileX -q datafileQ -n numPts (DB) -m numQueries -d dim -r numReps [-o outFile] [-b] [-k neighbs]\n\n");
+    printf("\tdatafileX    = binary file containing the database\n");
+    printf("\tdatafileQ    = binary file containing the queries\n");
     printf("\tnumPts       = size of database\n");
     printf("\tnumQueries   = number of queries\n");
     printf("\tdim          = dimensionality\n");
@@ -182,21 +165,28 @@ void parseInput(int argc, char **argv){
     printf("\toutFile      = output file (optional); stored in text format\n");
     //printf("\trDim         = reduced dimensionality\n"); 
     printf("\tneighbs      = num neighbors (optional; default is 1)\n"); 
-    printf("\n\tuse -b option to run brute force search\n");
+    printf("\n\tuse -b option to run brute force search (in addition to the RBC)\n");
+    printf("\n\nTo input data in text format (instead of bin):\n\tuse the -X and -Q switches in place of -x and -q\n");
     printf("\n\n");
     exit(0);
   }
   
   while(i<argc){
-    if(!strcmp(argv[i], "-f"))
-      dataFile = argv[++i];
+    if(!strcmp(argv[i], "-x"))
+      dataFileX = argv[++i];
+    else if(!strcmp(argv[i], "-q"))
+      dataFileQ = argv[++i];
+    else if(!strcmp(argv[i], "-X"))
+      dataFileXtxt = argv[++i];
+    else if(!strcmp(argv[i], "-Q"))
+      dataFileQtxt = argv[++i];
     else if(!strcmp(argv[i], "-n"))
       n = atoi(argv[++i]);
     else if(!strcmp(argv[i], "-m"))
       m = atoi(argv[++i]);
     else if(!strcmp(argv[i], "-d"))
       d = atoi(argv[++i]);
-    else if(!strcmp(argv[i], "-D"))
+    else if(!strcmp(argv[i], "-D")) 
       D = atoi(argv[++i]);
     else if(!strcmp(argv[i], "-r"))
       numReps = atoi(argv[++i]);
@@ -213,9 +203,17 @@ void parseInput(int argc, char **argv){
     i++;
   }
 
-  if( !n || !m || !d || !numReps || !dataFile ){
+  if( !n || !m || !d || !numReps ){
     fprintf(stderr,"more arguments needed.. exiting\n");
     exit(1);
+  }
+  if( (!dataFileX && !dataFileXtxt) || (!dataFileQ && !dataFileQtxt) ){
+    fprintf(stderr,"more arguments needed.. exiting\n");
+    exit(1);
+  }
+  if( (dataFileX && dataFileXtxt) || (dataFileQ && dataFileQtxt)){
+    fprintf(stderr,"you can only give one database file and one query file.. exiting\n");
+    exit(1); 
   }
   if( !D )
     D = d;
@@ -230,6 +228,7 @@ void parseInput(int argc, char **argv){
 }
 
 
+// loads data from a binary file into data in row-major order.
 void readData(char *dataFile, unint rows, unint cols, real *data){
   FILE *fp;
   unint numRead;
@@ -271,34 +270,6 @@ void readDataText(char *dataFile, unint rows, unint cols, real *data){
   }
   fclose(fp);
 }
-
-//This function splits the data into two matrices, x and q, of 
-//their specified dimensions.  The data is split randomly.
-//It is assumed that the number of rows of data (the parameter n)
-//is at least as large as x.r+q.r
-void orgData(real *data, unint n, unint d, matrix x, matrix q){
-   
-  unint i,fi,j;
-  unint *p;
-  p = (unint*)calloc(n,sizeof(*p));
-  
-  randPerm(n,p);
-  
-  for(i=0,fi=0 ; i<x.r ; i++,fi++){
-    for(j=0;j<x.c;j++){
-      x.mat[IDX(i,j,x.ld)] = data[IDX(p[fi],j,d)];
-    }
-  }
-
-  for(i=0 ; i<q.r ; i++,fi++){
-    for(j=0;j<q.c;j++){
-      q.mat[IDX(i,j,q.ld)] = data[IDX(p[fi],j,d)];
-    } 
-  }
-
-  free(p);
-}
-
 
 void evalApprox(matrix q, matrix x, unint *NNs){
   real *ranges = (real*)calloc(q.pr, sizeof(*ranges));
@@ -369,4 +340,22 @@ void writeDoubs(int num, char* file, double x,...){
     fprintf(fp,"%6.5f ",z);
   fprintf(fp,"\n");
   fclose(fp);
+}
+
+
+void writeNeighbs(char *file, unint **NNs){
+  unint i,j;
+  FILE *fp = fopen(file,"w");
+  if( !fp ){
+    fprintf(stderr, "can't open output file\n");
+    return;
+  }
+  
+  for( i=0; i<m; i++ ){
+    for( j=0; j<K; j++ )
+      fprintf( fp, "%u ", NNs[i][j] );
+    fprintf(fp, "\n");
+  }
+  fclose(fp);
+
 }

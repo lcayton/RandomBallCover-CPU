@@ -112,7 +112,7 @@ void searchExact(matrix q, matrix x, matrix r, rep *ri, unint *NNs, real *dToNNs
     }
   }
   
-#pragma omp parallel for private(j,k) schedule(dynamic)
+#pragma omp parallel for private(j,k) //schedule(dynamic)
   for(i=0; i<q.pr/CL; i++){
     unint row = i*CL;
     unint tn = omp_get_thread_num();
@@ -124,7 +124,6 @@ void searchExact(matrix q, matrix x, matrix r, rep *ri, unint *NNs, real *dToNNs
     
     for( j=0; j<r.r; j++ ){
       for(k=0; k<CL; k++){
-	//d[tn][k][j] = distVecLB(q, r, row+k, j, minDist[k]);
 	d[tn][k][j] = distVec(q, r, row+k, j);
 	if(d[tn][k][j] < minDist[k]){
 	  minDist[k] = d[tn][k][j]; //gamma
@@ -241,6 +240,7 @@ void searchExactK(matrix q, matrix x, matrix r, rep *ri, unint **NNs, real **dNN
   bruteListK(x,q,ri,toSearch,r.r,NNs,dNNs,K);
 
   
+  //clean-up
   for(i=0; i<nt; i++){
     for(j=0; j<CL; j++)
       destroyHeap(&hp[i][j]);
@@ -406,7 +406,7 @@ void buildOneShot(matrix x, matrix *r, rep *ri, unint numReps, unint s){
     for (j=0; j<s; j++){
       ri[i].lr[j] = repID[i][j];
     }
-    ri[i].radius = distVec( *r, x, i, ri[i].lr[s-1]);  //Not actually needed by one-shot alg
+    //ri[i].radius = distVec( *r, x, i, ri[i].lr[s-1]);  //Not actually needed by one-shot alg
   }
   
   for( i=0; i<r->pr; i++){
@@ -434,7 +434,7 @@ void searchOneShot(matrix q, matrix x, matrix r, rep *ri, unint *NNs){
 }
 
 
-// Performs (approx) 1-NN search with the RBC One-shot algorithm.
+// Performs (approx) K-NN search with the RBC One-shot algorithm.
 void searchOneShotK(matrix q, matrix x, matrix r, rep *ri, unint **NNs, unint K){
   int i;
   unint *repID = (unint*)calloc(q.pr, sizeof(*repID));
@@ -469,6 +469,7 @@ void pickReps(matrix x, matrix *r){
     shuf[i]=i;
 
 
+  //generate a random permutation of 1..n
   struct timeval tv;
   gettimeofday(&tv,NULL);
   gsl_rng * rng;
