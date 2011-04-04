@@ -1,6 +1,8 @@
+/* This file is part of the Random Ball Cover (RBC) library.
+ * (C) Copyright 2011, Lawrence Cayton [lcayton@tuebingen.mpg.de]
+ */
 #include<omp.h>
 #include<string.h>
-#include<stdarg.h>
 #include<stdio.h>
 #include<stdlib.h>
 #include<sys/time.h>
@@ -9,12 +11,10 @@
 #include "utils.h" 
 #include "brute.h"
 #include "rbc.h"
-#include "dists.h"
 
 void parseInput(int,char**);
 void readData(char*,matrix);
 void readDataText(char*,matrix);
-void writeDoubs(int, char*, double,...);
 void writeNeighbs(char*,char*,unint**,real**);
 
 char *dataFileX, *dataFileQ, *dataFileXtxt, *dataFileQtxt, *outFile, *outFiletxt;
@@ -100,14 +100,6 @@ int main(int argc, char**argv){
     double bruteTime = timeDiff(tvB,tvE);
     printf("brute time elapsed = %6.4f \n", bruteTime );
     
-    unint j;
-    for(i=0; i<m; i++){
-      for(j=0; j<K; j++)
-	if( NNs[i][j] != NNsBrute[i][j] ){
-	  printf("%d %d %d %f %f \n", i, NNs[i][j], NNsBrute[i][j], distVec(q,x,i,NNs[i][j]), distVec(q,x,i,NNsBrute[i][j]));
-	}
-    }
-
     free(NNsBrute);
     free(dToNNsBrute);
   }
@@ -246,21 +238,6 @@ void readDataText(char *dataFile, matrix x){
       x.mat[IDX( i, j, x.ld )]=(real)t;
     }
   }
-  fclose(fp);
-}
-
-
-void writeDoubs(int num, char* file, double x,...){
-  double z;
-  int i;
-
-  FILE*fp = fopen(file,"a");
-  va_list s;
-  va_start(s,x);
-  
-  for(z=x, i=0; i<num; z=va_arg(s,double),i++)
-    fprintf(fp,"%6.5f ",z);
-  fprintf(fp,"\n");
   fclose(fp);
 }
 

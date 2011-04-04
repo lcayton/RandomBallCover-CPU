@@ -1,5 +1,5 @@
 /* This file is part of the Random Ball Cover (RBC) library.
- * (C) Copyright 2010, Lawrence Cayton [lcayton@tuebingen.mpg.de]
+ * (C) Copyright 2011, Lawrence Cayton [lcayton@tuebingen.mpg.de]
  */
 
 #ifndef UTILS_H

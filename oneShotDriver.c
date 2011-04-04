@@ -1,6 +1,8 @@
+/* This file is part of the Random Ball Cover (RBC) library.
+ * (C) Copyright 2011, Lawrence Cayton [lcayton@tuebingen.mpg.de]
+ */
 #include<omp.h>
 #include<string.h>
-#include<stdarg.h>
 #include<stdio.h>
 #include<stdlib.h>
 #include<sys/time.h>
@@ -17,7 +19,6 @@ void readData(char*,matrix);
 void readDataText(char*,matrix);
 void evalApprox(matrix,matrix,unint*);
 double evalApproxK(matrix,matrix,unint**,unint);
-void writeDoubs(int, char*, double,...);
 void writeNeighbs(char*,char*,unint**,real**);
 
 char *dataFileX, *dataFileQ, *dataFileXtxt, *dataFileQtxt, *outFile, *outFiletxt;
@@ -304,21 +305,6 @@ double evalApproxK(matrix q, matrix x, unint **NNs, unint K){
   free(dT);
   
   return ((double)ol)/((double)q.r);
-}
-
-
-void writeDoubs(int num, char* file, double x,...){
-  double z;
-  int i;
-
-  FILE*fp = fopen(file,"a");
-  va_list s;
-  va_start(s,x);
-  
-  for(z=x, i=0; i<num; z=va_arg(s,double),i++)
-    fprintf(fp,"%6.5f ",z);
-  fprintf(fp,"\n");
-  fclose(fp);
 }
 
 

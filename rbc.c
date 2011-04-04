@@ -1,3 +1,7 @@
+/* This file is part of the Random Ball Cover (RBC) library.
+ * (C) Copyright 2011, Lawrence Cayton [lcayton@tuebingen.mpg.de]
+ */
+
 /* Core methods for building and searching the RBC. */
 
 #ifndef RBC_C
