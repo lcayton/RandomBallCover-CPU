@@ -131,10 +131,10 @@ void parseInput(int argc, char **argv){
     printf("\tnumQueries   = number of queries\n");
     printf("\tdim          = dimensionality\n");
     printf("\tnumReps      = number of representatives\n");
-    printf("\toutFile      = output file (optional); stored in text format\n");
+    printf("\toutFile      = binary output file (optional)\n");
     printf("\tneighbs      = num neighbors (optional; default is 1)\n"); 
     printf("\n\tuse -b option to run brute force search (in addition to the RBC)\n");
-    printf("\n\nTo input/output data in text format (instead of bin):\n\tuse the -X and -Q and -O switches in place of -x and -q and -o (respectively).\n");
+    printf("\n\n\tTo input/output data in text format (instead of bin), use the \n\t-X and -Q and -O switches in place of -x and -q and -o (respectively).\n");
     printf("\n\n");
     exit(0);
   }
@@ -180,7 +180,7 @@ void parseInput(int argc, char **argv){
     exit(1);
   }
   if( (dataFileX && dataFileXtxt) || (dataFileQ && dataFileQtxt) ){
-    fprintf(stderr,"you can only give one database file and one query file and one ouput file.. exiting\n");
+    fprintf(stderr,"you can only give one database file and one query file.. exiting\n");
     exit(1); 
   }
   if(numReps>n){ 

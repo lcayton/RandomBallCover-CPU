@@ -189,7 +189,7 @@ void parseInput(int argc, char **argv){
     exit(1);
   }
   if( (dataFileX && dataFileXtxt) || (dataFileQ && dataFileQtxt) ){
-    fprintf(stderr,"you can only give one database file and one query file and one ouput file.. exiting\n");
+    fprintf(stderr,"you can only give one database file and one query file.. exiting\n");
     exit(1); 
   }
   if(numReps>n){ 
