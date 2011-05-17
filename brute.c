@@ -225,13 +225,12 @@ void bruteMapK(matrix X, matrix Q, rep *ri, unint* qMap, unint **NNs, real **dTo
   gsl_sort_uint_index(qSort,qMap,1,Q.r);
 
   unint nt = omp_get_max_threads();
-  unint m = Q.r;
   
   heap **hp;
   hp = (heap**)calloc(nt, sizeof(*hp));
   for(i=0; i<nt; i++){
-    hp[i] = (heap*)calloc(m, sizeof(**hp));
-    for(j=0; j<m; j++)
+    hp[i] = (heap*)calloc(CL, sizeof(**hp));
+    for(j=0; j<CL; j++)
       createHeap(&hp[i][j],K);
   }   
   
