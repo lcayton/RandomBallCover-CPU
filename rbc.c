@@ -32,6 +32,11 @@ void buildExact(matrix x, matrix *r, rep *ri, unint numReps){
   unint i, j;
   unint longestLength = 0;
 
+  if( numReps > n ){
+    fprintf( stderr, "number of representatives must be less than the DB size\n");
+    exit(1);
+  }
+
   initMat(r, numReps, x.c);
   r->mat = (real*)calloc( sizeOfMat(*r), sizeof(*r->mat) );
   
@@ -389,6 +394,11 @@ void buildOneShot(matrix x, matrix *r, rep *ri, unint numReps){
   unint ps = CPAD(s);
   unint i, j;
   
+  if( numReps > x.r ){
+    fprintf( stderr, "number of representatives must be less than the DB size\n");
+    exit(1);
+  }
+
   initMat( r, numReps, x.c );
   r->mat = (real*)calloc( sizeOfMat(*r), sizeof(*r->mat));
 
