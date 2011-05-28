@@ -418,6 +418,7 @@ void buildOneShot(matrix x, matrix *r, rep *ri, unint numReps){
   
   for( i=0; i<r->pr; i++){
     ri[i].lr = (unint*)calloc(ps, sizeof(*ri[i].lr));
+    ri[i].dists = (real*)calloc(ps, sizeof(*ri[i].dists));
     ri[i].len = s;
     for (j=0; j<s; j++){
       ri[i].lr[j] = repID[i][j];

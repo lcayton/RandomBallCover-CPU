@@ -20,6 +20,10 @@ void readDataText(char*,matrix);
 void evalApprox(matrix,matrix,unint*);
 double evalApproxK(matrix,matrix,unint**,unint);
 void writeNeighbs(char*,char*,unint**,real**);
+void safeWrite(void *,size_t,size_t,FILE*);
+void safeRead(void*,size_t,size_t,FILE*);
+void saveRBC(matrix*,rep*,char*);
+void loadRBC(matrix*,rep**,char*);
 
 char *dataFileX, *dataFileQ, *dataFileXtxt, *dataFileQtxt, *outFile, *outFiletxt;
 unint n=0, m=0, d=0, numReps=0, runBrute=0, runEval=0;
@@ -108,11 +112,29 @@ int main(int argc, char**argv){
   
   if( outFile || outFiletxt )
     writeNeighbs( outFile, outFiletxt, NNs, dNNs );
+
   
+  //try out reading/writing functions
+  printf("writing .. \n"); fflush(NULL);
+  char filename[100] = "tempOut.bin"; \
+  saveRBC( &r, ri, filename );
+  printf("done \n"); fflush(NULL);
+  freeRBC( r, ri );
+  printf("loading ..\n"); fflush(NULL);
+  loadRBC( &r, &ri, filename );
+  printf("done \n"); fflush(NULL);
+  printf("R = %d, %d \n", r.r, r.c );
+
+  gettimeofday(&tvB,NULL);
+  searchOneShotK(q, x, r, ri, NNs, dNNs, K);
+  gettimeofday(&tvE,NULL);
+  searchTime =  timeDiff(tvB,tvE);
+  printf("one-shot k-nn search time elapsed = %6.4f \n", searchTime );
+  evalApproxK(q, x, NNs, K);
 
   //clean up
-  freeRBC( r, ri );
 
+  freeRBC( r, ri );
   for(i=0;i<m; i++){
     free(NNs[i]);    free(dNNs[i]);
   }
@@ -348,5 +370,92 @@ void writeNeighbs(char *file, char *filetxt, unint **NNs, real **dNNs){
       fwrite( dNNs[i], sizeof(*dNNs[i]), K, fp );
     
     fclose(fp);
+  }
+}
+
+
+void saveRBC( matrix *R, rep *ri, char *filename ){
+  size_t i;
+  unint nr = R->r;
+  
+  FILE *fp = fopen(filename, "wb");
+  if( !fp ){
+    fprintf(stderr, "unable to open output file\n");
+    exit(1);
+  }
+  
+  safeWrite( &nr, sizeof(unint), 1, fp );
+  
+  for( i=0; i<nr; i++ ){
+    unint len = ri[i].len;
+    safeWrite( &len, sizeof(unint), 1, fp );
+    safeWrite( ri[i].lr, sizeof(unint), len, fp );
+    safeWrite( ri[i].dists, sizeof(real), len, fp );
+    
+    safeWrite( &(ri[i].start), sizeof(unint), 1, fp );
+    safeWrite( &(ri[i].radius), sizeof(real), 1, fp );
+  }
+  
+  safeWrite( &(R->r), sizeof(unint), 1, fp );
+  safeWrite( &(R->c), sizeof(unint), 1, fp );
+  safeWrite( R->mat, sizeof(real), sizeOfMat(*R), fp );
+  
+  fclose(fp);
+}
+
+//note: allocates R, ri
+void loadRBC( matrix *R, rep **ri, char* filename ){
+  size_t i;
+  unint nr, len, plen;
+  
+  FILE *fp = fopen(filename, "rb");
+  if( !fp ){
+     fprintf(stderr, "unable to open output file\n");
+     exit(1);
+   }
+  
+  safeRead( &nr, sizeof(unint), 1, fp );
+  
+  (*ri) = (rep*)calloc( CPAD(nr), sizeof(rep) );
+  
+  for( i=0; i<nr; i++ ){
+    safeRead( &len, sizeof(unint), 1, fp );
+    plen = CPAD( len );
+
+    (*ri)[i].lr = (unint*)calloc( plen, sizeof(unint) );
+    (*ri)[i].dists = (real*)calloc( plen, sizeof(real) );
+    
+    (*ri)[i].len = len;
+
+    safeRead( (*ri)[i].lr, sizeof(unint), len, fp );
+    safeRead( (*ri)[i].dists, sizeof(real), len, fp );
+    safeRead( &((*ri)[i].start), sizeof(unint), 1, fp );
+    safeRead( &((*ri)[i].radius), sizeof(real), 1, fp );
+  }
+ 
+  unint r,c;
+  safeRead( &r, sizeof(unint), 1, fp );
+  safeRead( &c, sizeof(unint), 1, fp );
+  initMat( R, r, c );
+  R->mat = (real*)calloc( sizeOfMat(*R), sizeof(real) );
+  safeRead( R->mat, sizeof(real), sizeOfMat(*R), fp );
+  
+  fclose(fp);
+}
+
+
+//replacement for fwrite
+void safeWrite( void *x, size_t size, size_t n, FILE *fp ){
+  if( n != fwrite( x, size, n, fp ) ){
+    fprintf(stderr, "error writing \n");
+    exit(1);
+  }
+}
+
+//replacement for fread
+void safeRead( void *x, size_t size, size_t n, FILE *fp ){
+  if( n != fread( x, size, n, fp ) ){
+    fprintf(stderr, "error reading \n");
+    exit(1);
   }
 }

@@ -297,7 +297,7 @@ void initMat(matrix *x, unint r, unint c){
 
 
 size_t sizeOfMat(matrix x){
-  return x.pr*x.pc;
+  return ((size_t)x.pr)*x.pc;
 }
 
 
