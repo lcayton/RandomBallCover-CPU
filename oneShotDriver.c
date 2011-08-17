@@ -115,25 +115,25 @@ int main(int argc, char**argv){
 
   
   //try out reading/writing functions
-  printf("writing .. \n"); fflush(NULL);
-  char filename[100] = "tempOut.bin"; \
-  saveRBC( &r, ri, filename );
-  printf("done \n"); fflush(NULL);
-  freeRBC( r, ri );
-  printf("loading ..\n"); fflush(NULL);
-  loadRBC( &r, &ri, filename );
-  printf("done \n"); fflush(NULL);
-  printf("R = %d, %d \n", r.r, r.c );
+  /* printf("writing .. \n"); fflush(NULL); */
+  /* char filename[100] = "tempOut.bin"; \ */
+  /* saveRBC( &r, ri, filename ); */
+  /* printf("done \n"); fflush(NULL); */
+  /* freeRBC( r, ri ); */
+  /* printf("loading ..\n"); fflush(NULL); */
+  /* loadRBC( &r, &ri, filename ); */
+  /* printf("done \n"); fflush(NULL); */
+  /* printf("R = %d, %d \n", r.r, r.c ); */
 
-  gettimeofday(&tvB,NULL);
-  searchOneShotK(q, x, r, ri, NNs, dNNs, K);
-  gettimeofday(&tvE,NULL);
-  searchTime =  timeDiff(tvB,tvE);
-  printf("one-shot k-nn search time elapsed = %6.4f \n", searchTime );
-  evalApproxK(q, x, NNs, K);
+  /* gettimeofday(&tvB,NULL); */
+  /* searchOneShotK(q, x, r, ri, NNs, dNNs, K); */
+  /* gettimeofday(&tvE,NULL); */
+  /* searchTime =  timeDiff(tvB,tvE); */
+  /* printf("one-shot k-nn search time elapsed = %6.4f \n", searchTime ); */
+  /* evalApproxK(q, x, NNs, K); */
+
 
   //clean up
-
   freeRBC( r, ri );
   for(i=0;i<m; i++){
     free(NNs[i]);    free(dNNs[i]);
