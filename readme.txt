@@ -1,8 +1,8 @@
 ***[cpu] Random Ball Cover (RBC) v0.1***
 Lawrence Cayton
-lcayton@tuebingen.mpg.de
+work@lcayton.com
 
-(C) Copyright 2011, Lawrence Cayton [lcayton@tuebingen.mpg.de]
+(C) Copyright 2011, Lawrence Cayton [work@lcayton.com]
  
 This program is free software: you can redistribute it and/or modify 
 it under the terms of the GNU General Public License as published by
@@ -32,10 +32,9 @@ visit my (Lawrence Cayton's) webpage for details.
 Detailed information about the theory behind this method and its
 empirical performance can be found in the paper
 
-L. Cayton. Accelerating nearest neighbor search on manycore systems.  
-
-The paper is currently under review, but is available on my webpage
-and arxiv.
+L. Cayton. Accelerating nearest neighbor search on manycore systems. 
+Twenty-Sixth IEEE International Parallel and Distributed Processing 
+Symposium (IPDPS), 2012. 
 
 
 ---------------------------------------------------------------------
